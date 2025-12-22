@@ -35,13 +35,50 @@ export const calculateProfileCompletion = (profile) => {
   const missingCategories = new Set();
 
   fields.forEach((field) => {
-    const value = profile[field.key];
-    if (field.nested && value && value[field.nested]) {
-      completedFields.push(field);
-    } else if (!field.nested && value !== null && value !== undefined && value !== '') {
+    let value = profile[field.key];
+    let isCompleted = false;
+    
+    // Handle JSON string values (from database)
+    if (value && typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        // Not JSON, keep as is
+      }
+    }
+    
+    if (field.nested) {
+      // Check nested field (e.g., fitnessGoals.primaryGoal, calorieGoals.dailyCalories)
+      if (value && typeof value === 'object') {
+        const nestedValue = value[field.nested];
+        // Check if nested value is not null, undefined, or empty string
+        // For dailyCalories, 0 is not valid, but for other fields it might be
+        if (field.nested === 'dailyCalories') {
+          isCompleted = nestedValue !== null && nestedValue !== undefined && nestedValue !== '' && !isNaN(nestedValue) && nestedValue > 0;
+        } else {
+          isCompleted = nestedValue !== null && nestedValue !== undefined && nestedValue !== '';
+        }
+      }
+    } else {
+      // Check direct field
+      // For numeric fields, 0 is not a valid value
+      if (field.key === 'weightKg' || field.key === 'heightCm') {
+        isCompleted = value !== null && value !== undefined && value !== '' && !isNaN(value) && value > 0;
+      } else {
+        isCompleted = value !== null && value !== undefined && value !== '';
+      }
+    }
+    
+    if (isCompleted) {
       completedFields.push(field);
     } else {
       missingCategories.add(field.category);
+      console.log(`[ProfileCompletion] Missing field: ${field.key} (category: ${field.category})`);
+      if (field.nested) {
+        console.log(`[ProfileCompletion]   Value:`, value, `Nested key: ${field.nested}`, `Nested value:`, value?.[field.nested]);
+      } else {
+        console.log(`[ProfileCompletion]   Value:`, value);
+      }
     }
   });
 

@@ -61,6 +61,34 @@ const FitnessGoalsScreen = ({ navigation, route }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleSave = async () => {
+    if (!validate()) {
+      Alert.alert('Validation Error', 'Please complete all required fields.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const profileData = {
+        fitnessGoals: {
+          primaryGoal: fitnessGoals.primaryGoal,
+        },
+        activityLevel: fitnessGoals.exerciseLevel,
+        workoutsPerWeek: parseInt(fitnessGoals.workoutsPerWeek, 10),
+        timePerWorkout: fitnessGoals.timePerWorkout,
+      };
+
+      await upsertProfile(profileData);
+      Alert.alert('Success', 'Fitness goals updated successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', getReadableError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleNext = () => {
     if (!validate()) {
       Alert.alert('Validation Error', 'Please complete all required fields.');
@@ -73,6 +101,12 @@ const FitnessGoalsScreen = ({ navigation, route }) => {
       workoutsPerWeek: parseInt(fitnessGoals.workoutsPerWeek, 10),
       timePerWorkout: fitnessGoals.timePerWorkout,
     };
+
+    // If in edit mode, save directly
+    if (isEditMode) {
+      handleSave();
+      return;
+    }
 
     // Pass data forward via route params (old app flow)
     navigation.navigate('CalorieGoalsScreen', {
@@ -251,7 +285,11 @@ const FitnessGoalsScreen = ({ navigation, route }) => {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleNext} loading={false} />
+        <PrimaryButton 
+          title={isEditMode ? "Save" : "Continue"} 
+          onPress={handleNext} 
+          loading={loading} 
+        />
       </View>
     </ScreenContainer>
   );

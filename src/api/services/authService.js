@@ -2,11 +2,15 @@ import { apiClient } from '../client';
 
 const extractData = (response) => {
   // Axios response structure: response.data contains the actual response body
-  // Backend returns: { message: "...", data: { user, token } }
+  // Backend returns: { message: "...", data: { token, userId } } for login
+  // Backend returns: { message: "...", data: { user, token } } for register
   if (response?.data) {
-    // If response.data has a 'data' property, extract it
-    if (response.data.data && typeof response.data.data === 'object' && 'user' in response.data.data) {
-      return response.data.data;
+    // If response.data has a 'data' property, extract it (this is the actual data)
+    if (response.data.data && typeof response.data.data === 'object') {
+      // Check if it's the nested data structure from backend
+      if ('token' in response.data.data || 'user' in response.data.data) {
+        return response.data.data;
+      }
     }
     // Otherwise return response.data directly
     return response.data;
@@ -103,7 +107,10 @@ export const login = async (payload) => {
     const extracted = extractData(response);
     
     if (__DEV__) {
-      console.log('[Login] ✅ Extracted data:', extracted);
+      console.log('[Login] Raw response.data:', JSON.stringify(response.data, null, 2));
+      console.log('[Login] ✅ Extracted data:', JSON.stringify(extracted, null, 2));
+      console.log('[Login] Token in extracted:', extracted?.token);
+      console.log('[Login] UserId in extracted:', extracted?.userId);
     }
     
     return extracted;

@@ -12,7 +12,9 @@ const getEnvVar = (key: string, fallback?: string) => {
 };
 
 const USERS_SERVICE_BASE = getEnvVar('EXPO_PUBLIC_USERS_SERVICE_URL', 'http://192.168.1.6:8081');
-const GYM_SERVICE_BASE = getEnvVar('EXPO_PUBLIC_GYM_SERVICE_URL', 'http://192.168.1.6:8080');
+// Gym-management-service runs on port 3000 (different microservice)
+// IMPORTANT: This needs a SEPARATE ngrok tunnel (not the same as users-service)
+const GYM_SERVICE_BASE = getEnvVar('EXPO_PUBLIC_GYM_SERVICE_URL', 'http://192.168.1.6:3000');
 
 // Ensure base URL doesn't already include /api/users
 const normalizeBaseUrl = (url) => {
@@ -36,6 +38,7 @@ const normalizedUsersBase = normalizeBaseUrl(USERS_SERVICE_BASE);
 
 export const ENV = {
   USERS_SERVICE_URL: `${normalizedUsersBase}/api/users`,
+  // Gym service doesn't use /api prefix based on routes structure
   GYM_SERVICE_URL: GYM_SERVICE_BASE,
   APP_NAME: getEnvVar('EXPO_PUBLIC_APP_NAME', 'Fitsera'),
 };

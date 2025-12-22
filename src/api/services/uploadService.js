@@ -82,7 +82,19 @@ export const uploadPostMedia = async (fileUri, mediaType = 'image') => {
     
     // Return full URL (base URL + file path)
     const baseURL = getBaseURL();
-    const fullUrl = data.url.startsWith('http') ? data.url : `${baseURL}${data.url}`;
+    let fullUrl = data.url;
+    
+    // If URL doesn't start with http, make it absolute
+    if (!fullUrl.startsWith('http')) {
+      // Ensure baseURL doesn't have trailing slash and data.url starts with /
+      const base = baseURL.replace(/\/+$/, '');
+      const path = fullUrl.startsWith('/') ? fullUrl : `/${fullUrl}`;
+      fullUrl = `${base}${path}`;
+    }
+    
+    if (__DEV__) {
+      console.log('[Upload] Media URL:', fullUrl);
+    }
     
     return {
       ...data,

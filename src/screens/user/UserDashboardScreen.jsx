@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
+import { useBootstrap } from '../../context/BootstrapContext';
 import { fetchProfile, upsertProfile } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
 import {
@@ -34,6 +35,7 @@ import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 const UserDashboardScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { bootstrapData, loading: bootstrapLoading } = useBootstrap();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,12 +55,55 @@ const UserDashboardScreen = ({ navigation }) => {
       console.log('Profile data loaded:', profileData);
       
       if (profileData) {
+        // Handle calorieGoals if it's a JSON string (from database)
+        if (profileData.calorieGoals && typeof profileData.calorieGoals === 'string') {
+          try {
+            profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
+          } catch (e) {
+            console.warn('Failed to parse calorieGoals:', e);
+          }
+        }
+        
+        // Handle fitnessGoals if it's a JSON string
+        if (profileData.fitnessGoals && typeof profileData.fitnessGoals === 'string') {
+          try {
+            profileData.fitnessGoals = JSON.parse(profileData.fitnessGoals);
+          } catch (e) {
+            console.warn('Failed to parse fitnessGoals:', e);
+          }
+        }
+        
         setProfile(profileData);
         profileRef.current = profileData; // Update ref
-        // Profile is complete if it has basic info (weight/height) or fullName
-        setIsProfileComplete(
-          !!(profileData.fullName || (profileData.weightKg && profileData.heightCm))
-        );
+        
+        // Calculate actual profile completion
+        const completion = calculateProfileCompletion(profileData);
+        console.log('=== PROFILE COMPLETION DEBUG ===');
+        console.log('Profile completion:', JSON.stringify(completion, null, 2));
+        console.log('Full profile data:', JSON.stringify(profileData, null, 2));
+        console.log('Fitness Goals:', JSON.stringify(profileData.fitnessGoals, null, 2));
+        console.log('Calorie Goals:', JSON.stringify(profileData.calorieGoals, null, 2));
+        console.log('Activity Level:', profileData.activityLevel);
+        console.log('Full Name:', profileData.fullName);
+        console.log('Date of Birth:', profileData.dateOfBirth);
+        console.log('Gender:', profileData.gender);
+        console.log('Location:', profileData.location);
+        console.log('Weight:', profileData.weightKg);
+        console.log('Height:', profileData.heightCm);
+        
+        // Check if database migration is needed
+        if (!profileData.hasOwnProperty('location') || !profileData.hasOwnProperty('fitnessGoals') || !profileData.hasOwnProperty('calorieGoals')) {
+          console.warn('⚠️ DATABASE MIGRATION NEEDED!');
+          console.warn('The database schema is missing these fields. Please run:');
+          console.warn('1. cd C:\\Users\\Lenovo\\Desktop\\Gym-Backend\\users-service');
+          console.warn('2. npm run prisma:generate');
+          console.warn('3. npm run prisma:migrate');
+          console.warn('4. Restart the backend server');
+        }
+        console.log('===============================');
+        
+        // Profile is complete if 100% of required fields are filled
+        setIsProfileComplete(completion.percentage === 100);
         
         // Load real health data
         const steps = await getTodaySteps();
@@ -95,12 +140,52 @@ const UserDashboardScreen = ({ navigation }) => {
   useEffect(() => {
     let isMounted = true;
     
-    // Load profile once on mount
-    loadProfile().finally(() => {
+    // Wait for bootstrap to finish loading
+    if (bootstrapLoading) {
+      return;
+    }
+    
+    // Try to use bootstrap data first (user profile is included)
+    if (bootstrapData?.user?.profile) {
+      console.log('[UserDashboard] Using bootstrap data for profile');
+      const profileData = bootstrapData.user.profile;
+      
+      // Handle JSON string parsing
+      if (profileData.calorieGoals && typeof profileData.calorieGoals === 'string') {
+        try {
+          profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
+        } catch (e) {
+          console.warn('Failed to parse calorieGoals:', e);
+        }
+      }
+      
+      if (profileData.fitnessGoals && typeof profileData.fitnessGoals === 'string') {
+        try {
+          profileData.fitnessGoals = JSON.parse(profileData.fitnessGoals);
+        } catch (e) {
+          console.warn('Failed to parse fitnessGoals:', e);
+        }
+      }
+      
+      setProfile(profileData);
+      profileRef.current = profileData;
+      
+      // Calculate profile completion
+      const completion = calculateProfileCompletion(profileData);
+      setIsProfileComplete(completion.percentage === 100);
+      
       if (isMounted) {
         setLoading(false);
       }
-    });
+    } else {
+      // Fallback to individual API call if bootstrap data not available
+      console.log('[UserDashboard] Bootstrap data not available, using individual API call');
+      loadProfile().finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+    }
     
     startStepTracking();
     
@@ -341,29 +426,45 @@ const UserDashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             {/* Nutrition Goal Card */}
-            <View style={styles.nutritionCard}>
+            <TouchableOpacity 
+              style={styles.nutritionCard}
+              onPress={() => navigation.navigate('CalorieGoalsScreen', {
+                userProfile: profile,
+                isEditing: true,
+                editMode: true,
+              })}
+            >
               <Text style={styles.cardTitle}>Nutrition Goal</Text>
-              <View style={styles.nutritionGrid}>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Pro</Text>
-                  <Text style={styles.nutritionValue}>
-                    {profile.calorieGoals?.protein || 0}g
-                  </Text>
+              {profile.calorieGoals?.dailyCalories ? (
+                <View style={styles.nutritionGrid}>
+                  <View style={styles.nutritionItem}>
+                    <Text style={styles.nutritionLabel}>Pro</Text>
+                    <Text style={styles.nutritionValue}>
+                      {profile.calorieGoals?.protein || 0}g
+                    </Text>
+                  </View>
+                  <View style={styles.nutritionItem}>
+                    <Text style={styles.nutritionLabel}>Carbs</Text>
+                    <Text style={styles.nutritionValue}>
+                      {profile.calorieGoals?.carbs || 0}g
+                    </Text>
+                  </View>
+                  <View style={styles.nutritionItem}>
+                    <Text style={styles.nutritionLabel}>Fat</Text>
+                    <Text style={styles.nutritionValue}>
+                      {profile.calorieGoals?.fat || 0}g
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Carbs</Text>
-                  <Text style={styles.nutritionValue}>
-                    {profile.calorieGoals?.carbs || 0}g
+              ) : (
+                <View style={styles.emptyNutritionState}>
+                  <Text style={styles.emptyNutritionText}>
+                    Set your nutrition goals to track your macros
                   </Text>
+                  <Ionicons name="nutrition-outline" size={24} color="#9ca3af" style={styles.emptyNutritionIcon} />
                 </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Fat</Text>
-                  <Text style={styles.nutritionValue}>
-                    {profile.calorieGoals?.fat || 0}g
-                  </Text>
-                </View>
-              </View>
-            </View>
+              )}
+            </TouchableOpacity>
 
             {/* Physical Stats Card */}
             <View style={styles.physicalStatsCard}>
@@ -395,6 +496,7 @@ const UserDashboardScreen = ({ navigation }) => {
                 <Ionicons name="chevron-forward" size={20} color="#6b7280" />
               </View>
             </TouchableOpacity>
+
 
           </>
         )}
@@ -699,6 +801,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+  emptyNutritionState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  emptyNutritionText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyNutritionIcon: {
+    marginTop: 4,
+  },
   // Physical Stats Card
   physicalStatsCard: {
     backgroundColor: '#ffffff',
@@ -744,6 +860,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  // Diary Card
+  diaryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  diaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  diaryIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f3e8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  diaryContent: {
+    flex: 1,
+  },
+  diarySubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
   },
   // Common Card Title
   cardTitle: {

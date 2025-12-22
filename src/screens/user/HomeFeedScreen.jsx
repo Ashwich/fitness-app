@@ -12,12 +12,16 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
+import { useBootstrap } from '../../context/BootstrapContext';
 import { getFeed, likePost, addComment, getPost } from '../../api/services/postService';
 import { toggleFollow, checkFollowStatus } from '../../api/services/followService';
+import { getUnreadCount as getNotificationUnreadCount } from '../../api/services/notificationService';
 import { getReadableError } from '../../utils/apiError';
+import { ENV } from '../../config/env';
 
 const { width } = Dimensions.get('window');
 
@@ -38,16 +42,60 @@ const formatTimestamp = (dateString) => {
 
 const HomeFeedScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { bootstrapData, refreshBootstrap, loading: bootstrapLoading } = useBootstrap();
   const [posts, setPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followingStatus, setFollowingStatus] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [showComments, setShowComments] = useState({});
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  const loadFeed = useCallback(async () => {
+  // Use bootstrap data if available, otherwise fall back to individual API calls
+  const loadFeed = useCallback(async (useBootstrapData = true) => {
     try {
       setLoading(true);
+      
+      // Try to use bootstrap data first (much faster - 1 API call vs 10+)
+      if (useBootstrapData && bootstrapData?.feed?.posts) {
+        console.log('[HomeFeed] Using bootstrap data for feed');
+        const bootstrapPosts = bootstrapData.feed.posts;
+        
+        // Deduplicate posts by ID to prevent duplicate keys
+        const uniquePosts = bootstrapPosts.reduce((acc, post) => {
+          if (!acc.find(p => p.id === post.id)) {
+            acc.push(post);
+          }
+          return acc;
+        }, []);
+        
+        setPosts(uniquePosts);
+        
+        // Extract follow status from bootstrap posts (already included!)
+        const statusMap = {};
+        uniquePosts.forEach((post) => {
+          if (post.userId !== user?.id) {
+            statusMap[post.userId] = post.isFollowing || false;
+          }
+        });
+        setFollowingStatus(statusMap);
+        
+        // Use unread counts from bootstrap
+        if (bootstrapData.notifications?.unreadCount !== undefined) {
+          setUnreadNotificationCount(bootstrapData.notifications.unreadCount);
+        }
+        if (bootstrapData.messages?.unreadCount !== undefined) {
+          setUnreadMessageCount(bootstrapData.messages.unreadCount);
+        }
+        
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      // Fallback to individual API calls if bootstrap data not available
+      console.log('[HomeFeed] Bootstrap data not available, using individual API calls');
       const feedPosts = await getFeed(20, 0);
       
       // Ensure feedPosts is an array
@@ -58,28 +106,52 @@ const HomeFeedScreen = ({ navigation }) => {
       }
       
       // Transform posts to match UI format
-      const transformedPosts = feedPosts.map((post) => ({
-        id: post.id,
-        userId: post.userId,
-        username: post.user?.username || post.user?.profile?.fullName || 'User',
-        profilePhoto: post.user?.profile?.avatarUrl || null,
-        postType: post.mediaType,
-        mediaUrl: post.mediaUrl,
-        caption: post.caption || '',
-        likes: post.likesCount || post.likes?.length || 0,
-        comments: post.commentsCount || post.comments?.length || 0,
-        commentsList: post.comments || [],
-        timestamp: formatTimestamp(post.createdAt),
-        isLiked: post.isLiked || false,
-        createdAt: post.createdAt,
-      }));
+      const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
       
-      setPosts(transformedPosts);
+      const transformedPosts = feedPosts.map((post) => {
+        // Ensure mediaUrl is absolute
+        let mediaUrl = post.mediaUrl;
+        if (mediaUrl && !mediaUrl.startsWith('http')) {
+          mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
+        }
+        
+        // Ensure profilePhoto is absolute
+        let profilePhoto = post.user?.profile?.avatarUrl || null;
+        if (profilePhoto && !profilePhoto.startsWith('http')) {
+          profilePhoto = profilePhoto.startsWith('/') ? `${baseURL}${profilePhoto}` : `${baseURL}/${profilePhoto}`;
+        }
+        
+        return {
+          id: post.id,
+          userId: post.userId,
+          username: post.user?.username || post.user?.profile?.fullName || 'User',
+          profilePhoto: profilePhoto,
+          postType: post.mediaType,
+          mediaUrl: mediaUrl,
+          caption: post.caption || '',
+          likes: post.likesCount || post.likes?.length || 0,
+          comments: post.commentsCount || post.comments?.length || 0,
+          commentsList: post.comments || [],
+          timestamp: formatTimestamp(post.createdAt),
+          isLiked: post.isLiked || false,
+          createdAt: post.createdAt,
+        };
+      });
+      
+      // Deduplicate posts by ID to prevent duplicate keys
+      const uniquePosts = transformedPosts.reduce((acc, post) => {
+        if (!acc.find(p => p.id === post.id)) {
+          acc.push(post);
+        }
+        return acc;
+      }, []);
+      
+      setPosts(uniquePosts);
       
       // Load follow status for all unique users
       const uniqueUserIds = [...new Set(transformedPosts.map(p => p.userId))];
       const followStatusPromises = uniqueUserIds
-        .filter(uid => uid !== user?.id) // Don't check follow status for self
+        .filter(uid => uid !== user?.id)
         .map(async (userId) => {
           try {
             const status = await checkFollowStatus(userId);
@@ -96,6 +168,14 @@ const HomeFeedScreen = ({ navigation }) => {
         statusMap[userId] = isFollowing;
       });
       setFollowingStatus(statusMap);
+      
+      // Load unread notification count
+      try {
+        const unreadData = await getNotificationUnreadCount();
+        setUnreadNotificationCount(unreadData?.count || 0);
+      } catch (error) {
+        console.warn('Error loading unread count:', error);
+      }
     } catch (error) {
       console.error('Error loading feed:', error);
       Alert.alert('Error', getReadableError(error));
@@ -103,15 +183,51 @@ const HomeFeedScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [bootstrapData, user]);
 
+  // Load feed when bootstrap data is available or when component mounts
   useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
+    // Wait for bootstrap to finish loading before making API calls
+    if (bootstrapLoading) {
+      // Still loading bootstrap, wait...
+      return;
+    }
+    
+    if (bootstrapData?.feed?.posts) {
+      // Use bootstrap data immediately
+      console.log('[HomeFeed] Bootstrap data ready, using it');
+      loadFeed(true);
+    } else {
+      // Bootstrap finished but no data, fallback to individual API calls
+      console.log('[HomeFeed] Bootstrap finished but no data, using individual API calls');
+      loadFeed(false);
+    }
+  }, [bootstrapData, bootstrapLoading, loadFeed]);
+
+  // Refresh feed when screen comes into focus (e.g., after posting)
+  // Only refresh if bootstrap data exists, don't force bootstrap reload
+  useFocusEffect(
+    useCallback(() => {
+      // Just reload feed from existing bootstrap data or fallback
+      // Don't call refreshBootstrap here to avoid multiple API calls
+      if (bootstrapData?.feed?.posts) {
+        loadFeed(true);
+      } else if (!bootstrapLoading) {
+        loadFeed(false);
+      }
+    }, [bootstrapData, bootstrapLoading, loadFeed])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadFeed();
+    // Refresh bootstrap data (which includes feed)
+    try {
+      await refreshBootstrap();
+      await loadFeed(true);
+    } catch (error) {
+      // Fallback to individual API calls
+      await loadFeed(false);
+    }
   };
 
   const handleLike = async (postId) => {
@@ -282,8 +398,9 @@ const HomeFeedScreen = ({ navigation }) => {
       {showComments[post.id] && (
         <View style={styles.commentsSection}>
           {post.commentsList && post.commentsList.length > 0 ? (
-            post.commentsList.map((comment) => (
-              <View key={comment.id} style={styles.commentItem}>
+            // Deduplicate comments before rendering
+            [...new Map(post.commentsList.map(comment => [comment.id, comment])).values()].map((comment, index) => (
+              <View key={comment.id || `comment-${index}-${comment.createdAt}`} style={styles.commentItem}>
                 <Text style={styles.commentText}>
                   <Text style={styles.commentUsername}>
                     {comment.user?.username || comment.user?.profile?.fullName || 'User'}
@@ -323,9 +440,38 @@ const HomeFeedScreen = ({ navigation }) => {
     <ScreenContainer>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Fitsera</Text>
-        <TouchableOpacity>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#111827" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('NotificationsScreen')}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name="notifications-outline" size={24} color="#111827" />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('MessagesScreen')}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#111827" />
+              {unreadMessageCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading && posts.length === 0 ? (
@@ -348,7 +494,7 @@ const HomeFeedScreen = ({ navigation }) => {
               </Text>
             </View>
           ) : (
-            posts.map((post) => <PostCard key={post.id} post={post} />)
+            posts.map((post, index) => <PostCard key={post.id || `post-${index}-${post.createdAt}`} post={post} />)
           )}
         </ScrollView>
       )}
@@ -371,6 +517,35 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#111827',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 4,
+  },
+  iconContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   content: {
     flex: 1,

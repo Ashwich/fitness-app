@@ -78,17 +78,57 @@ export const createPost = async (postData) => {
   return extractData(response);
 };
 
-export const getFeed = async (limit = 20, offset = 0) => {
+/**
+ * Get feed with cursor-based pagination (optimized)
+ * @param {number} limit - Number of posts to fetch
+ * @param {string|null} cursor - Cursor for pagination (null for first page)
+ * @returns {Promise<{items: Array, nextCursor: string|null}>}
+ */
+export const getFeed = async (limit = 20, cursor = null) => {
+  try {
+    const params = { limit };
+    if (cursor) {
+      params.cursor = cursor;
+    } else {
+      // Fallback to offset for backward compatibility
+      params.offset = 0;
+    }
+    
+    const response = await postsClient.get('/feed', { params });
+    const data = extractData(response);
+    
+    // Handle cursor-based response
+    if (data && typeof data === 'object' && 'items' in data) {
+      return {
+        items: Array.isArray(data.items) ? data.items : [],
+        nextCursor: data.nextCursor || null,
+      };
+    }
+    
+    // Fallback: return as array for backward compatibility
+    return {
+      items: Array.isArray(data) ? data : [],
+      nextCursor: null,
+    };
+  } catch (error) {
+    console.error('Error fetching feed:', error);
+    return { items: [], nextCursor: null };
+  }
+};
+
+/**
+ * Get feed with offset-based pagination (legacy, for backward compatibility)
+ * @deprecated Use getFeed with cursor instead
+ */
+export const getFeedWithOffset = async (limit = 20, offset = 0) => {
   try {
     const response = await postsClient.get('/feed', {
       params: { limit, offset },
     });
     const data = extractData(response);
-    // Ensure we return an array
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching feed:', error);
-    // Return empty array on error instead of throwing
     return [];
   }
 };

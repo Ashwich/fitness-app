@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ENV } from '../config/env';
+import { getToken } from '../storage/tokenStorage';
 
 let authToken: string | null = null;
 
@@ -14,11 +15,38 @@ export const apiClient = axios.create({
 
 // Request interceptor - log requests in development
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     config.headers = config.headers ?? {};
 
-    if (authToken) {
-      config.headers.Authorization = `Bearer ${authToken}`;
+    // Try to get token from storage first (most reliable)
+    // Fallback to in-memory token if storage fails
+    let token = null;
+    try {
+      token = await getToken();
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[API Client] Could not retrieve token from storage, using in-memory token:', error);
+      }
+      // Fallback to in-memory token
+      token = authToken;
+    }
+
+    // If storage didn't have token, use in-memory token
+    if (!token) {
+      token = authToken;
+    }
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      if (__DEV__) {
+        // Log token presence (but not the actual token for security)
+        console.log(`[API Client] Token attached for ${config.method?.toUpperCase()} ${config.url}`, {
+          tokenLength: token.length,
+          tokenPrefix: token.substring(0, 20) + '...',
+        });
+      }
+    } else if (__DEV__) {
+      console.warn('[API Client] ⚠️ No auth token available for request:', config.url);
     }
 
     config.headers.Accept = 'application/json';

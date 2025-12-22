@@ -30,6 +30,11 @@ import WaterIntakeScreen from '../screens/user/WaterIntakeScreen';
 import StepsGoalScreen from '../screens/user/StepsGoalScreen';
 import ProfileSettingsScreen from '../screens/user/ProfileSettingsScreen';
 import CreatePostScreen from '../screens/user/CreatePostScreen';
+import NotificationsScreen from '../screens/user/NotificationsScreen';
+import MessagesScreen from '../screens/user/MessagesScreen';
+import ChatScreen from '../screens/user/ChatScreen';
+import GymsScreen from '../screens/user/GymsScreen';
+import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
@@ -37,6 +42,8 @@ const AuthStack = createNativeStackNavigator();
 const AppTabs = createBottomTabNavigator();
 const UserStack = createNativeStackNavigator();
 const HomeStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
+const DiaryStack = createNativeStackNavigator();
 
 const AuthNavigator = () => (
   <AuthStack.Navigator
@@ -73,6 +80,26 @@ const HomeStackNavigator = () => (
       name="UserProfileScreen"
       component={UserProfileScreen}
       options={{ title: 'Profile' }}
+    />
+    <HomeStack.Screen
+      name="CreatePostScreen"
+      component={CreatePostScreen}
+      options={{ title: 'Create Post' }}
+    />
+    <HomeStack.Screen
+      name="NotificationsScreen"
+      component={NotificationsScreen}
+      options={{ title: 'Notifications' }}
+    />
+    <HomeStack.Screen
+      name="MessagesScreen"
+      component={MessagesScreen}
+      options={{ title: 'Messages' }}
+    />
+    <HomeStack.Screen
+      name="ChatScreen"
+      component={ChatScreen}
+      options={{ title: 'Chat' }}
     />
   </HomeStack.Navigator>
 );
@@ -129,7 +156,47 @@ const UserStackNavigator = () => (
       component={UserProfileScreen}
       options={{ title: 'Profile' }}
     />
+    <UserStack.Screen
+      name="NutritionDiaryScreen"
+      component={NutritionDiaryScreen}
+      options={{ title: 'Nutrition Diary' }}
+    />
   </UserStack.Navigator>
+);
+
+// Profile Stack - includes UserProfileScreen and CreatePostScreen
+const ProfileStackNavigator = () => (
+  <ProfileStack.Navigator
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <ProfileStack.Screen
+      name="UserProfileScreen"
+      component={UserProfileScreen}
+      options={{ title: 'Profile' }}
+    />
+    <ProfileStack.Screen
+      name="CreatePostScreen"
+      component={CreatePostScreen}
+      options={{ title: 'Create Post' }}
+    />
+  </ProfileStack.Navigator>
+);
+
+// Diary Stack - includes NutritionDiaryScreen
+const DiaryStackNavigator = () => (
+  <DiaryStack.Navigator
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <DiaryStack.Screen
+      name="NutritionDiary"
+      component={NutritionDiaryScreen}
+      options={{ title: 'Nutrition Diary' }}
+    />
+  </DiaryStack.Navigator>
 );
 
 const AppTabNavigator = () => (
@@ -148,21 +215,10 @@ const AppTabNavigator = () => (
           iconName = focused ? 'home' : 'home-outline';
         } else if (route.name === 'Dashboard') {
           iconName = focused ? 'grid' : 'grid-outline';
-        } else if (route.name === 'CreatePost') {
-          // Special larger icon for create post
-          return (
-            <View style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: focused ? '#2563eb' : '#9ca3af',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: -8,
-            }}>
-              <Ionicons name="add" size={32} color="#ffffff" />
-            </View>
-          );
+        } else if (route.name === 'Diary') {
+          iconName = focused ? 'restaurant' : 'restaurant-outline';
+        } else if (route.name === 'Gyms') {
+          iconName = focused ? 'fitness' : 'fitness-outline';
         } else if (route.name === 'Profile') {
           iconName = focused ? 'person' : 'person-outline';
         }
@@ -181,13 +237,18 @@ const AppTabNavigator = () => (
       options={{ title: 'Dashboard' }} 
     />
     <AppTabs.Screen 
-      name="CreatePost" 
-      component={CreatePostScreen} 
-      options={{ title: 'Post' }} 
+      name="Diary" 
+      component={DiaryStackNavigator} 
+      options={{ title: 'Diary' }} 
+    />
+    <AppTabs.Screen 
+      name="Gyms" 
+      component={GymsScreen} 
+      options={{ title: 'Gyms' }} 
     />
     <AppTabs.Screen 
       name="Profile" 
-      component={UserProfileScreen} 
+      component={ProfileStackNavigator} 
       options={{ title: 'Profile' }} 
     />
   </AppTabs.Navigator>

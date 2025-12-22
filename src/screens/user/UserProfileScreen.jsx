@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
-import { fetchProfile, upsertProfile } from '../../api/services/profileService';
+import { upsertProfile } from '../../api/services/profileService';
 import { getUserById } from '../../api/services/userProfileService';
 import { getUserPosts } from '../../api/services/postService';
 import { getFollowStats, toggleFollow, checkFollowStatus } from '../../api/services/followService';
@@ -41,29 +42,62 @@ const UserProfileScreen = ({ navigation, route }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // Refresh profile when screen comes into focus (e.g., after posting)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
+
   const loadProfile = async () => {
     try {
       setLoading(true);
       
       if (isOwnProfile) {
-        // Load own profile
-        const profileData = await fetchProfile();
-        if (profileData) {
-          setProfile(profileData);
-          setBio(profileData.bio || '');
-          setProfession(profileData.profession || '');
-          setProfilePhoto(profileData.avatarUrl || null);
+        // Load own profile - use getUserById to handle cases where profile doesn't exist yet
+        try {
+          const userData = await getUserById(userId);
+          
+          if (userData) {
+            // User data includes profile if it exists, otherwise profile is null
+            const profileData = userData.profile || {};
+            setProfile({ ...userData, ...profileData });
+            setBio(profileData.bio || '');
+            setProfession(profileData.profession || '');
+            setProfilePhoto(profileData.avatarUrl || null);
+          } else {
+            // Fallback to user data from auth context
+            setProfile(user || {});
+            setBio('');
+            setProfession('');
+            setProfilePhoto(null);
+          }
+        } catch (userError) {
+          // If getUserById fails, use user data from auth context
+          console.warn('Failed to fetch user by ID, using auth context user:', userError);
+          setProfile(user || {});
+          setBio('');
+          setProfession('');
+          setProfilePhoto(null);
         }
         
         // Load own posts
         const userPosts = await getUserPosts(userId, 50, 0);
-        setPosts(
-          userPosts.map((post) => ({
-            id: post.id,
-            type: post.mediaType,
-            url: post.mediaUrl,
-          }))
-        );
+        const transformedPosts = userPosts.map((post) => ({
+          id: post.id,
+          type: post.mediaType,
+          url: post.mediaUrl,
+        }));
+        
+        // Deduplicate posts by ID to prevent duplicate keys
+        const uniquePosts = transformedPosts.reduce((acc, post) => {
+          if (!acc.find(p => p.id === post.id)) {
+            acc.push(post);
+          }
+          return acc;
+        }, []);
+        
+        setPosts(uniquePosts);
         
         // Load follow stats
         const stats = await getFollowStats(userId);
@@ -84,13 +118,21 @@ const UserProfileScreen = ({ navigation, route }) => {
         
         // Load user's posts
         const userPosts = await getUserPosts(userId, 50, 0);
-        setPosts(
-          userPosts.map((post) => ({
-            id: post.id,
-            type: post.mediaType,
-            url: post.mediaUrl,
-          }))
-        );
+        const transformedPosts = userPosts.map((post) => ({
+          id: post.id,
+          type: post.mediaType,
+          url: post.mediaUrl,
+        }));
+        
+        // Deduplicate posts by ID to prevent duplicate keys
+        const uniquePosts = transformedPosts.reduce((acc, post) => {
+          if (!acc.find(p => p.id === post.id)) {
+            acc.push(post);
+          }
+          return acc;
+        }, []);
+        
+        setPosts(uniquePosts);
         
         // Load follow stats and status
         const [stats, followStatus] = await Promise.all([
@@ -100,7 +142,9 @@ const UserProfileScreen = ({ navigation, route }) => {
         
         setFollowers(stats.followers || 0);
         setFollowing(stats.following || 0);
-        setIsFollowing(followStatus.isFollowing || false);
+        // Handle different response formats
+        const followingStatus = followStatus?.data?.isFollowing ?? followStatus?.isFollowing ?? false;
+        setIsFollowing(followingStatus);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -175,8 +219,11 @@ const UserProfileScreen = ({ navigation, route }) => {
           {isOwnProfile ? 'My Profile' : profile?.fullName || profile?.username}
         </Text>
         {isOwnProfile && (
-          <TouchableOpacity onPress={isEditing ? handleSave : handleEdit}>
-            <Text style={styles.editButton}>{isEditing ? 'Save' : 'Edit'}</Text>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('CreatePostScreen')}
+            style={styles.postIconButton}
+          >
+            <Ionicons name="add-circle-outline" size={28} color="#2563eb" />
           </TouchableOpacity>
         )}
         {!isOwnProfile && (
@@ -255,24 +302,36 @@ const UserProfileScreen = ({ navigation, route }) => {
           {isOwnProfile ? (
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => navigation.navigate('ProfileSettingsScreen')}
-            >
-              <Text style={styles.primaryButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.primaryButton, isFollowing && styles.followingButton]}
-              onPress={handleFollow}
+              onPress={isEditing ? handleSave : handleEdit}
             >
               <Text style={styles.primaryButtonText}>
-                {isFollowing ? 'Following' : 'Follow'}
+                {isEditing ? 'Save' : 'Edit Profile'}
               </Text>
             </TouchableOpacity>
-          )}
-          {!isOwnProfile && (
-            <TouchableOpacity style={styles.messageButton}>
-              <Ionicons name="mail-outline" size={20} color="#111827" />
-            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.primaryButton, isFollowing && styles.followingButton]}
+                onPress={handleFollow}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Text>
+              </TouchableOpacity>
+              {isFollowing && (
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={() => {
+                    navigation.navigate('ChatScreen', {
+                      userId: userId,
+                      partner: profile,
+                    });
+                  }}
+                >
+                  <Ionicons name="mail-outline" size={20} color="#111827" />
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -286,8 +345,8 @@ const UserProfileScreen = ({ navigation, route }) => {
             </View>
           ) : (
             <View style={styles.postsGrid}>
-              {posts.map((post) => (
-                <TouchableOpacity key={post.id} style={styles.postThumbnail}>
+              {posts.map((post, index) => (
+                <TouchableOpacity key={post.id || `post-${index}-${post.url}`} style={styles.postThumbnail}>
                   <Image source={{ uri: post.url }} style={styles.thumbnailImage} />
                   {post.type === 'video' && (
                     <View style={styles.videoBadge}>
@@ -357,6 +416,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2563eb',
+  },
+  postIconButton: {
+    padding: 4,
   },
   placeholder: {
     width: 40,

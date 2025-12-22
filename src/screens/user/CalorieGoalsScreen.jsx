@@ -15,6 +15,7 @@ import { upsertProfile } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
 
 const CalorieGoalsScreen = ({ navigation, route }) => {
+  const isEditMode = route.params?.isEditing || route.params?.editMode || false;
   const existingProfile = route.params?.userProfile || {};
   const personalInfo = route.params?.personalInfo || {};
   const physicalInfo = route.params?.physicalInfo || {};
@@ -184,6 +185,33 @@ const CalorieGoalsScreen = ({ navigation, route }) => {
     return true;
   };
 
+  const handleSave = async () => {
+    if (!validate()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const profileData = {
+        calorieGoals: {
+          dailyCalories: parseInt(calorieGoals.dailyCalories, 10),
+          protein: parseInt(calorieGoals.protein, 10),
+          carbs: parseInt(calorieGoals.carbs, 10),
+          fat: parseInt(calorieGoals.fat, 10),
+        },
+      };
+
+      await upsertProfile(profileData);
+      Alert.alert('Success', 'Nutrition goals updated successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', getReadableError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleNext = () => {
     if (!validate()) {
       return;
@@ -195,6 +223,12 @@ const CalorieGoalsScreen = ({ navigation, route }) => {
       carbs: parseInt(calorieGoals.carbs, 10),
       fat: parseInt(calorieGoals.fat, 10),
     };
+
+    // If in edit mode, save directly
+    if (isEditMode) {
+      handleSave();
+      return;
+    }
 
     // Pass data forward via route params (old app flow)
     navigation.navigate('ProfileSummaryScreen', {
@@ -315,7 +349,11 @@ const CalorieGoalsScreen = ({ navigation, route }) => {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Review Profile" onPress={handleNext} loading={false} />
+        <PrimaryButton 
+          title={isEditMode ? "Save" : "Review Profile"} 
+          onPress={handleNext} 
+          loading={loading} 
+        />
       </View>
     </ScreenContainer>
   );
