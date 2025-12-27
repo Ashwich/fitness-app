@@ -32,6 +32,10 @@ export default {
             cleartextTrafficPermitted: true,
           },
           {
+            domain: '31.97.206.44',
+            cleartextTrafficPermitted: true,
+          },
+          {
             domain: 'localhost',
             cleartextTrafficPermitted: true,
           },
@@ -56,8 +60,8 @@ export default {
       ],
     ],
     extra: {
-      usersServiceUrl: process.env.EXPO_PUBLIC_USERS_SERVICE_URL || 'http://localhost:8081',
-      gymServiceUrl: process.env.EXPO_PUBLIC_GYM_SERVICE_URL || 'http://localhost:8080',
+      usersServiceUrl: process.env.EXPO_PUBLIC_USERS_SERVICE_URL || 'http://31.97.206.44:8081',
+      gymServiceUrl: process.env.EXPO_PUBLIC_GYM_SERVICE_URL || 'http://31.97.206.44:4000',
       appName: process.env.EXPO_PUBLIC_APP_NAME || 'Fitsera',
     },
   },

@@ -35,6 +35,8 @@ import MessagesScreen from '../screens/user/MessagesScreen';
 import ChatScreen from '../screens/user/ChatScreen';
 import GymsScreen from '../screens/user/GymsScreen';
 import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
+import AttendanceScreen from '../screens/user/AttendanceScreen';
+import GymReviewsScreen from '../screens/user/GymReviewsScreen';
 import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
@@ -160,6 +162,16 @@ const UserStackNavigator = () => (
       name="NutritionDiaryScreen"
       component={NutritionDiaryScreen}
       options={{ title: 'Nutrition Diary' }}
+    />
+    <UserStack.Screen
+      name="AttendanceScreen"
+      component={AttendanceScreen}
+      options={{ title: 'Mark Attendance' }}
+    />
+    <UserStack.Screen
+      name="GymReviewsScreen"
+      component={GymReviewsScreen}
+      options={{ title: 'Gym Reviews' }}
     />
   </UserStack.Navigator>
 );

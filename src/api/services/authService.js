@@ -20,16 +20,20 @@ const extractData = (response) => {
 
 export const register = async (payload) => {
   try {
+    // Registration should be public - use /register directly (standard endpoint)
+    // /auth/register might require authentication, so we use /register
+    const endpoint = '/register';
+    
     // Log the actual URL being called
     if (__DEV__) {
-      console.log('[Register] Making request to:', `${apiClient.defaults.baseURL}/register`);
+      console.log('[Register] Making request to:', `${apiClient.defaults.baseURL}${endpoint}`);
     }
     
-    const response = await apiClient.post('/register', payload);
+    const response = await apiClient.post(endpoint, payload);
     
     // Debug logging
     if (__DEV__) {
-      console.log('[Register] Response status:', response.status);
+      console.log('[Register] ✅ Success! Response status:', response.status);
       console.log('[Register] Response URL:', response.config.url);
       console.log('[Register] Response baseURL:', response.config.baseURL);
       console.log('[Register] Response data type:', typeof response.data);
@@ -64,7 +68,41 @@ export const register = async (payload) => {
       console.error('[Register] Error response:', {
         status: error.response.status,
         data: error.response.data,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: `${error.config?.baseURL}${error.config?.url}`,
       });
+      
+      // If 401, provide helpful error message
+      if (error.response.status === 401) {
+        const errorData = error.response.data;
+        if (errorData?.error === 'Authorization token missing' || errorData?.error?.includes('Authorization')) {
+          console.error('[Register] ❌ Backend requires authentication for registration endpoint!');
+          console.error('[Register] This is unusual - registration should be a public endpoint.');
+          console.error('[Register] Endpoint attempted:', error.config?.url);
+          console.error('[Register]');
+          console.error('[Register] TROUBLESHOOTING:');
+          console.error('[Register] 1. Check backend routes - /register should be public (no auth middleware)');
+          console.error('[Register] 2. Verify backend route exists: POST /api/users/register');
+          console.error('[Register] 3. Check backend middleware configuration');
+          console.error('[Register] 4. Test endpoint directly: curl -X POST http://31.97.206.44:8081/api/users/register');
+        }
+      }
+      
+      // If 404, provide helpful error message
+      if (error.response.status === 404) {
+        const errorData = error.response.data;
+        console.error('[Register] ❌ Backend route not found!');
+        console.error('[Register] Expected route: POST /api/users/register');
+        console.error('[Register] Full URL attempted:', `${error.config?.baseURL}${error.config?.url}`);
+        console.error('[Register]');
+        console.error('[Register] TROUBLESHOOTING:');
+        console.error('[Register] 1. Check if backend server is running on VPS:');
+        console.error('[Register]    Test: http://31.97.206.44:8081/health');
+        console.error('[Register]    Should return: {"status":"ok","service":"users-service"}');
+        console.error('[Register] 2. Verify backend routes in backend codebase');
+        console.error('[Register] 3. Check backend logs for route registration');
+      }
     }
     throw error;
   }

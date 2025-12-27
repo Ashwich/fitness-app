@@ -68,6 +68,16 @@ export const getGymsByCity = async (city) => {
     if (error.response) {
       console.error('[GymService] Error status:', error.response.status);
       console.error('[GymService] Error data:', JSON.stringify(error.response.data, null, 2));
+      
+      // Provide helpful error messages for common backend errors
+      if (error.response.status === 500) {
+        const errorData = error.response.data;
+        if (errorData?.error?.includes('httpError is not a function')) {
+          console.error('[GymService] ❌ Backend Error: httpError is not a function');
+          console.error('[GymService] This is a backend code issue, not a frontend issue.');
+          console.error('[GymService] Check backend route handler for GET /api/users/gyms/city/:city');
+        }
+      }
     }
     throw error;
   }
@@ -103,6 +113,33 @@ export const getAllGyms = async (limit = 100, offset = 0) => {
     if (error.response) {
       console.error('[GymService] Error status:', error.response.status);
       console.error('[GymService] Error data:', JSON.stringify(error.response.data, null, 2));
+      
+      // Provide helpful error messages for common backend errors
+      if (error.response.status === 500) {
+        const errorData = error.response.data;
+        if (errorData?.error?.includes('httpError is not a function')) {
+          console.error('[GymService] ❌ Backend Error: httpError is not a function');
+          console.error('[GymService] This is a backend code issue, not a frontend issue.');
+          console.error('[GymService]');
+          console.error('[GymService] BACKEND FIX NEEDED:');
+          console.error('[GymService] 1. Check backend route handler for GET /api/users/gyms');
+          console.error('[GymService] 2. Verify httpError function is imported correctly');
+          console.error('[GymService] 3. Check backend error handling middleware');
+          console.error('[GymService] 4. Look for missing import: const { httpError } = require("...")');
+          console.error('[GymService] 5. Check backend logs on VPS server for full stack trace');
+        } else {
+          console.error('[GymService] ❌ Backend Internal Server Error (500)');
+          console.error('[GymService] Check backend logs on VPS: 31.97.206.44:8081');
+        }
+      }
+      
+      if (error.response.status === 404) {
+        console.error('[GymService] ❌ Endpoint not found: GET /api/users/gyms');
+        console.error('[GymService] Verify backend route exists and is registered');
+      }
+    } else if (error.request) {
+      console.error('[GymService] ❌ Network Error: No response from server');
+      console.error('[GymService] Check if backend is running on VPS: 31.97.206.44:8081');
     }
     throw error;
   }

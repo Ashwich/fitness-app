@@ -497,6 +497,22 @@ const UserDashboardScreen = ({ navigation }) => {
               </View>
             </TouchableOpacity>
 
+            {/* Attendance Card */}
+            <TouchableOpacity
+              style={styles.attendanceCard}
+              onPress={() => navigation.navigate('AttendanceScreen')}
+            >
+              <View style={styles.attendanceHeader}>
+                <View style={styles.attendanceIconContainer}>
+                  <Ionicons name="qr-code-outline" size={24} color="#8b5cf6" />
+                </View>
+                <View style={styles.attendanceContent}>
+                  <Text style={styles.cardTitle}>Mark Attendance</Text>
+                  <Text style={styles.attendanceSubtitle}>Scan QR code at gym</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+              </View>
+            </TouchableOpacity>
 
           </>
         )}
@@ -860,6 +876,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  // Attendance Card
+  attendanceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  attendanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  attendanceIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f3e8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  attendanceContent: {
+    flex: 1,
+  },
+  attendanceSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
   },
   // Diary Card
   diaryCard: {

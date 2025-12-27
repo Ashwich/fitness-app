@@ -21,9 +21,14 @@ import {
   getNearbyGyms,
   getAllGyms,
   getGymsByCity,
-  getGymReviews,
-  addGymReview,
 } from '../../api/services/gymService';
+import {
+  getGymReviews,
+  createReview,
+  updateReview,
+  getMyReview,
+  deleteReview,
+} from '../../api/services/gymReviewService';
 import { getReadableError } from '../../utils/apiError';
 import { ENV } from '../../config/env';
 
@@ -38,6 +43,7 @@ const GymsScreen = ({ navigation }) => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [hasExistingReview, setHasExistingReview] = useState(false);
 
   // Get user location from profile
   const getUserLocation = () => {
@@ -85,28 +91,54 @@ const GymsScreen = ({ navigation }) => {
         return;
       }
 
-      // For now, reviews are not implemented, so just format the gym data
-      const gymsWithReviews = gymsData.map((gym) => {
-        // Extract logo from branding if available
-        let logoUrl = null;
-        if (gym.branding && typeof gym.branding === 'object') {
-          logoUrl = gym.branding.logoUrl || gym.branding.logo || null;
-        }
-        
-        return {
-          ...gym,
-          logoUrl: logoUrl,
-          reviews: [],
-          averageRating: 0,
-          reviewsCount: 0,
-          description: gym.branding?.description || null,
-        };
-      });
+      // Load reviews for each gym
+      const gymsWithReviews = await Promise.all(
+        gymsData.map(async (gym) => {
+          // Extract logo from branding if available
+          let logoUrl = null;
+          if (gym.branding && typeof gym.branding === 'object') {
+            logoUrl = gym.branding.logoUrl || gym.branding.logo || null;
+          }
+          
+          // Load reviews for this gym
+          let reviewsData = { reviews: [], total: 0, averageRating: 0 };
+          try {
+            reviewsData = await getGymReviews(gym.id, 5, 0);
+          } catch (error) {
+            console.warn(`[Gyms] Failed to load reviews for gym ${gym.id}:`, error);
+          }
+          
+          return {
+            ...gym,
+            logoUrl: logoUrl,
+            reviews: reviewsData.reviews || [],
+            averageRating: reviewsData.averageRating || 0,
+            reviewsCount: reviewsData.total || 0,
+            description: gym.branding?.description || null,
+          };
+        })
+      );
 
       setGyms(gymsWithReviews);
     } catch (error) {
       console.error('Error loading gyms:', error);
-      Alert.alert('Error', getReadableError(error));
+      
+      // Check if it's a backend 500 error with specific message
+      if (error.response?.status === 500 && error.response?.data?.error?.includes('httpError is not a function')) {
+        // Backend error - show user-friendly message
+        Alert.alert(
+          'Service Temporarily Unavailable',
+          'The gym service is experiencing technical difficulties. Please try again later.',
+          [{ text: 'OK' }]
+        );
+        // Set empty array so UI doesn't break
+        setGyms([]);
+      } else {
+        // Other errors - show standard error message
+        Alert.alert('Error', getReadableError(error));
+        // Set empty array on error to prevent UI issues
+        setGyms([]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,20 +161,37 @@ const GymsScreen = ({ navigation }) => {
   };
 
   const handleGymPress = (gym) => {
-    // Show gym details in an alert or expand the card
-    // For now, just show basic info
-    Alert.alert(
-      gym.name || 'Gym',
-      `${gym.description || 'No description'}\n\n${gym.address || ''}\n${gym.city && gym.state ? `${gym.city}, ${gym.state}` : ''}`,
-      [{ text: 'OK' }]
-    );
+    // Navigate to reviews screen
+    navigation.navigate('GymReviewsScreen', { gym });
   };
 
-  const handleAddReview = (gym) => {
+  const handleAddReview = async (gym) => {
     setSelectedGym(gym);
-    setReviewRating(5);
-    setReviewComment('');
+    
+    // Check if user already has a review and pre-fill the form
+    try {
+      const existingReview = await getMyReview(gym.id);
+      if (existingReview) {
+        setHasExistingReview(true);
+        setReviewRating(existingReview.rating || 5);
+        setReviewComment(existingReview.comment || '');
+      } else {
+        setHasExistingReview(false);
+        setReviewRating(5);
+        setReviewComment('');
+      }
+    } catch (error) {
+      // If error, just set defaults
+      setHasExistingReview(false);
+      setReviewRating(5);
+      setReviewComment('');
+    }
+    
     setShowReviewModal(true);
+  };
+
+  const handleViewReviews = (gym) => {
+    navigation.navigate('GymReviewsScreen', { gym });
   };
 
   const handleSubmitReview = async () => {
@@ -155,20 +204,34 @@ const GymsScreen = ({ navigation }) => {
 
     try {
       setSubmittingReview(true);
-      // Reviews not implemented yet in backend
-      Alert.alert('Coming Soon', 'Review functionality will be available soon!');
+      
+      // Check if user already has a review for this gym
+      const existingReview = await getMyReview(selectedGym.id);
+      
+      if (existingReview) {
+        // Update existing review
+        await updateReview(selectedGym.id, {
+          rating: reviewRating,
+          comment: reviewComment.trim(),
+        });
+        Alert.alert('Success', 'Review updated successfully!');
+      } else {
+        // Create new review
+        await createReview(selectedGym.id, {
+          rating: reviewRating,
+          comment: reviewComment.trim(),
+        });
+        Alert.alert('Success', 'Review added successfully!');
+      }
+      
+      // Reload gyms to refresh review data
+      await loadGyms();
+      
       setShowReviewModal(false);
       setSelectedGym(null);
       setReviewComment('');
       setReviewRating(5);
-      
-      // TODO: Uncomment when reviews are implemented
-      // await addGymReview(selectedGym.id, {
-      //   rating: reviewRating,
-      //   comment: reviewComment.trim(),
-      // });
-      // Alert.alert('Success', 'Review added successfully');
-      // await loadGyms();
+      setHasExistingReview(false);
     } catch (error) {
       console.error('Error submitting review:', error);
       Alert.alert('Error', getReadableError(error));
@@ -284,15 +347,29 @@ const GymsScreen = ({ navigation }) => {
                   onPress={() => handleAddReview(gym)}
                 >
                   <Ionicons name="star-outline" size={18} color="#2563eb" />
-                  <Text style={styles.reviewButtonText}>Add Review</Text>
+                  <Text style={styles.reviewButtonText}>
+                    {gym.reviewsCount > 0 ? 'Edit Review' : 'Add Review'}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.viewButton}
-                  onPress={() => handleGymPress(gym)}
-                >
-                  <Text style={styles.viewButtonText}>View Details</Text>
-                </TouchableOpacity>
+                {gym.reviewsCount > 0 && (
+                  <TouchableOpacity
+                    style={styles.viewReviewsButton}
+                    onPress={() => handleViewReviews(gym)}
+                  >
+                    <Ionicons name="chatbubbles-outline" size={18} color="#10b981" />
+                    <Text style={styles.viewReviewsButtonText}>
+                      Reviews ({gym.reviewsCount})
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
+              <TouchableOpacity
+                style={styles.viewButton}
+                onPress={() => handleGymPress(gym)}
+              >
+                <Text style={styles.viewButtonText}>View All Reviews</Text>
+                <Ionicons name="chevron-forward" size={18} color="#ffffff" />
+              </TouchableOpacity>
             </TouchableOpacity>
           ))
         )}
@@ -309,10 +386,16 @@ const GymsScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Review {selectedGym?.name || 'Gym'}
+                {hasExistingReview ? 'Edit' : 'Add'} Review - {selectedGym?.name || 'Gym'}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowReviewModal(false)}
+                onPress={() => {
+                  setShowReviewModal(false);
+                  setSelectedGym(null);
+                  setReviewComment('');
+                  setReviewRating(5);
+                  setHasExistingReview(false);
+                }}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color="#111827" />
@@ -350,17 +433,57 @@ const GymsScreen = ({ navigation }) => {
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.submitButton, submittingReview && styles.submitButtonDisabled]}
-              onPress={handleSubmitReview}
-              disabled={submittingReview}
-            >
-              {submittingReview ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit Review</Text>
-              )}
-            </TouchableOpacity>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.submitButton, submittingReview && styles.submitButtonDisabled]}
+                  onPress={handleSubmitReview}
+                  disabled={submittingReview}
+                >
+                  {submittingReview ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>
+                      {hasExistingReview ? 'Update Review' : 'Submit Review'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {hasExistingReview && (
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={async () => {
+                      Alert.alert(
+                        'Delete Review',
+                        'Are you sure you want to delete your review?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await deleteReview(selectedGym.id);
+                                Alert.alert('Success', 'Review deleted successfully');
+                                await loadGyms();
+                                setShowReviewModal(false);
+                                setSelectedGym(null);
+                                setReviewComment('');
+                                setReviewRating(5);
+                                setHasExistingReview(false);
+                                await loadGyms();
+                              } catch (error) {
+                                Alert.alert('Error', getReadableError(error));
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    <Text style={styles.deleteButtonText}>Delete Review</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
           </View>
         </View>
       </Modal>
@@ -485,6 +608,7 @@ const styles = StyleSheet.create({
   gymActions: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
   reviewButton: {
     flex: 1,
@@ -502,10 +626,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2563eb',
   },
+  viewReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  viewReviewsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+  },
   viewButton: {
-    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -587,6 +728,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  modalActions: {
+    gap: 12,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  deleteButtonText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

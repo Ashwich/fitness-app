@@ -44,8 +44,8 @@ export const getDiaryEntry = async (date = null) => {
         // This is an authentication/authorization issue, not a missing diary entry
         throw new Error('User authentication failed. Please log in again.');
       } else {
-        console.log('[DiaryService] No diary entry found for date (404)');
-        return null;
+      console.log('[DiaryService] No diary entry found for date (404)');
+      return null;
       }
     }
     console.error('[DiaryService] Error fetching diary entry:', error);

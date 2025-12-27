@@ -39,7 +39,7 @@ The Fitsera platform consists of **3 separate codebases** that work together to 
 **Purpose:** Web portal for gym management
 
 **Backend Connection:**
-- **Service:** Gym Management Service (port 3000)
+- **Service:** Gym Management Service (port 4000)
 - **API Path:** `/api/gyms/*` or `/gyms/*`
 - **Database:** Separate gym database (managed by gym-management-service)
 
@@ -84,7 +84,7 @@ The Fitsera platform consists of **3 separate codebases** that work together to 
 ---
 
 #### 3.2 Gym Management Service
-**Port:** 3000  
+**Port:** 4000  
 **Purpose:** Handles all gym-related operations for the website frontend
 
 **Responsibilities:**
@@ -124,12 +124,12 @@ Both microservices run on the **same instance** but are separate processes. They
 └─────────────────┘         └────────┬─────────┘
                                      │
                                      │ Internal API Call
-                                     │ (localhost:3000)
+                                     │ (localhost:4000)
                                      ▼
                             ┌──────────────────┐
                             │ Gym Management   │
                             │   Service        │
-                            │   (Port 3000)    │
+                            │   (Port 4000)    │
                             └────────┬─────────┘
                                      │
                                      │ Internal API Call
@@ -144,7 +144,7 @@ Both microservices run on the **same instance** but are separate processes. They
 ### Internal API Configuration
 
 **User Service → Gym Service:**
-- **Internal URL:** `http://localhost:3000` (or `http://127.0.0.1:3000`)
+- **Internal URL:** `http://localhost:4000` (or `http://127.0.0.1:4000`)
 - **Use Case:** Fetch gym data for users browsing gyms in the app
 
 **Gym Service → User Service:**
@@ -182,21 +182,26 @@ Both microservices run on the **same instance** but are separate processes. They
 
 ### React Native App (.env)
 ```env
-EXPO_PUBLIC_USERS_SERVICE_URL=http://192.168.1.6:8081
-EXPO_PUBLIC_GYM_SERVICE_URL=http://192.168.1.6:3000
+# VPS Server Configuration
+EXPO_PUBLIC_USERS_SERVICE_URL=http://31.97.206.44:8081
+EXPO_PUBLIC_GYM_SERVICE_URL=http://31.97.206.44:4000
 EXPO_PUBLIC_APP_NAME=Fitsera
+
+# For local development, use:
+# EXPO_PUBLIC_USERS_SERVICE_URL=http://192.168.1.6:8081
+# EXPO_PUBLIC_GYM_SERVICE_URL=http://192.168.1.6:4000
 ```
 
 ### User Service (.env)
 ```env
 PORT=8081
 DATABASE_URL=...
-INTERNAL_GYM_SERVICE_URL=http://localhost:3000
+INTERNAL_GYM_SERVICE_URL=http://localhost:4000
 ```
 
 ### Gym Management Service (.env)
 ```env
-PORT=3000
+PORT=4000
 DATABASE_URL=...
 INTERNAL_USER_SERVICE_URL=http://localhost:8081
 ```
@@ -218,7 +223,7 @@ INTERNAL_USER_SERVICE_URL=http://localhost:8081
    ```bash
    cd path/to/gym-management-service
    npm run dev
-   # Runs on http://localhost:3000
+   # Runs on http://localhost:4000
    ```
 
 3. **React Native App:**
@@ -231,7 +236,7 @@ INTERNAL_USER_SERVICE_URL=http://localhost:8081
 
 **From User Service to Gym Service:**
 ```bash
-curl http://localhost:3000/gyms?limit=10
+curl http://localhost:4000/gyms?limit=10
 ```
 
 **From Gym Service to User Service:**
@@ -264,5 +269,9 @@ curl http://localhost:8081/api/users/health
 
 **Last Updated:** 2024
 **Maintained By:** Development Team
+
+
+
+
 
 

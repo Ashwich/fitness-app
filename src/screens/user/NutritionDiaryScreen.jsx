@@ -91,7 +91,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
   const loadData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) {
-        setLoading(true);
+      setLoading(true);
       }
       
       // Check if user is authenticated before making requests
@@ -116,9 +116,9 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
       // Load diary entry for selected date
       try {
-        const entry = await getDiaryEntry(selectedDate);
-        console.log('[NutritionDiary] Loaded diary entry:', entry);
-        
+      const entry = await getDiaryEntry(selectedDate);
+      console.log('[NutritionDiary] Loaded diary entry:', entry);
+      
         // Process the entry
         const processedEntry = processDiaryEntry(entry);
         
@@ -126,7 +126,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
         // This prevents overwriting valid data with null when refreshing after adding food
         if (processedEntry || showLoading) {
           if (processedEntry) {
-            console.log('[NutritionDiary] Parsed diary entry:', {
+        console.log('[NutritionDiary] Parsed diary entry:', {
               breakfast: processedEntry.breakfast?.length || 0,
               brunch: processedEntry.brunch?.length || 0,
               dinner: processedEntry.dinner?.length || 0,
@@ -135,8 +135,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
               totalProtein: processedEntry.totalProtein,
               totalCarbs: processedEntry.totalCarbs,
               totalFat: processedEntry.totalFat,
-            });
-          }
+        });
+      }
           setDiaryEntry(processedEntry);
         } else {
           // If we got null and this is a refresh (not initial load), keep existing data
@@ -168,8 +168,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
       // Load stats (only if showLoading is true to avoid unnecessary calls)
       if (showLoading) {
-        const statsData = await getDiaryStats(30);
-        setStats(statsData);
+      const statsData = await getDiaryStats(30);
+      setStats(statsData);
       }
     } catch (error) {
       console.error('[NutritionDiary] Error loading diary data:', error);
@@ -179,8 +179,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
       }
     } finally {
       if (showLoading) {
-        setLoading(false);
-      }
+      setLoading(false);
+    }
     }
   }, [selectedDate, processDiaryEntry, user]);
 
