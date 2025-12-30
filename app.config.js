@@ -3,7 +3,7 @@ export default {
   expo: {
     name: 'fitsera-app',
     slug: 'fitsera-app',
-    version: '1.0.0',
+    version: '1.0.1',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -17,6 +17,10 @@ export default {
       supportsTablet: true,
     },
     android: {
+      package: 'com.fitsera.app',
+      versionCode: 2,
+      minSdkVersion: 21,
+      targetSdkVersion: 34,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
@@ -63,6 +67,9 @@ export default {
       usersServiceUrl: process.env.EXPO_PUBLIC_USERS_SERVICE_URL || 'http://31.97.206.44:8081',
       gymServiceUrl: process.env.EXPO_PUBLIC_GYM_SERVICE_URL || 'http://31.97.206.44:4000',
       appName: process.env.EXPO_PUBLIC_APP_NAME || 'Fitsera',
+      eas: {
+        projectId: '3aad23bf-3ede-4f0d-a09c-40e1f889b53f',
+      },
     },
   },
 };

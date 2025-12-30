@@ -165,51 +165,144 @@ export const getNearbyGyms = async (location, radius = 10, limit = 20) => {
 
 /**
  * Get gym by ID
+ * Uses users-service endpoint: GET /api/users/gyms/:gymId (public endpoint)
  * @param {string} gymId - Gym ID
  * @returns {Promise<Object>} Gym details
  */
 export const getGymById = async (gymId) => {
   try {
-    // For now, we'll need to get from admin endpoint or search
-    // Since there's no public endpoint for single gym, we'll return null
-    // and handle it in the frontend
-    console.warn('getGymById: No public endpoint available, returning null');
-    return null;
+    if (!gymId) {
+      console.warn('getGymById: No gymId provided');
+      return null;
+    }
+
+    // Use users-service public endpoint to get gym by ID
+    const response = await gymClient.get(`/api/users/gyms/${gymId}`);
+    const data = extractData(response);
+    return data;
   } catch (error) {
-    console.error('Error fetching gym:', error);
+    console.error('Error fetching gym by ID:', error);
+    // Return null instead of throwing to prevent UI breakage
+    return null;
+  }
+};
+
+/**
+ * Get gym profile with photos, reviews, and inquiries
+ * Uses gym-management-service: GET /api/gym/profile
+ * @returns {Promise<Object>} Gym profile data
+ */
+export const getGymProfile = async () => {
+  return getGymById();
+};
+
+/**
+ * Get gym photos for a specific gym
+ * Uses gym-management-service: GET /api/gyms/:gymId/photos (public endpoint)
+ * @param {string} gymId - Gym ID
+ * @returns {Promise<Array>} List of gym photos
+ */
+export const getGymPhotos = async (gymId) => {
+  try {
+    if (!gymId) {
+      console.warn('getGymPhotos: No gymId provided');
+      return [];
+    }
+
+    // Use public endpoint that doesn't require authentication
+    const gymServiceClient = axios.create({
+      baseURL: ENV.GYM_SERVICE_URL, // http://31.97.206.44:4000
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log(`[GymService] Fetching photos for gym ${gymId} from ${ENV.GYM_SERVICE_URL}/api/gyms/${gymId}/photos`);
+    const response = await gymServiceClient.get(`/api/gyms/${gymId}/photos`);
+    const data = response.data?.data || response.data;
+    const photos = data?.photos || [];
+    console.log(`[GymService] ✅ Fetched ${photos.length} photos for gym ${gymId}`);
+    return photos;
+  } catch (error) {
+    console.error('[GymService] ❌ Error fetching gym photos:', {
+      gymId,
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: `${ENV.GYM_SERVICE_URL}/api/gyms/${gymId}/photos`,
+    });
+    // Return empty array instead of throwing to prevent UI breakage
+    return [];
+  }
+};
+
+/**
+ * Create gym inquiry
+ * Uses gym-management-service: POST /api/enquiries/create
+ * @param {Object} inquiryData - Inquiry data { name, email, phone, message }
+ * @returns {Promise<Object>} Created inquiry
+ */
+export const createGymInquiry = async (inquiryData) => {
+  try {
+    const gymServiceClient = axios.create({
+      baseURL: ENV.GYM_SERVICE_URL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Add auth token if available (optional for inquiries)
+    try {
+      const token = await getToken();
+      if (token) {
+        gymServiceClient.defaults.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      // Inquiries might be public, so token is optional
+    }
+
+    const response = await gymServiceClient.post('/api/enquiries/create', inquiryData);
+    return response.data?.data || response.data;
+  } catch (error) {
+    console.error('Error creating gym inquiry:', error);
     throw error;
   }
 };
 
 /**
- * Get reviews for a gym (placeholder - reviews not implemented yet)
+ * Get reviews for a gym
+ * Uses users-service endpoint: GET /api/users/gyms/:gymId/reviews
  * @param {string} gymId - Gym ID
  * @param {number} limit - Number of reviews to return
  * @param {number} offset - Pagination offset
- * @returns {Promise<Array>} List of reviews (empty for now)
+ * @returns {Promise<Object>} Reviews with total and averageRating
  */
 export const getGymReviews = async (gymId, limit = 20, offset = 0) => {
   try {
-    // Reviews not implemented yet - return empty array
-    // TODO: Implement review endpoints in backend
-    return [];
+    const response = await gymClient.get(`/api/users/gyms/${gymId}/reviews`, {
+      params: { limit, offset },
+    });
+    const data = extractData(response);
+    return data || { reviews: [], total: 0, averageRating: 0 };
   } catch (error) {
     console.error('Error fetching gym reviews:', error);
-    return [];
+    return { reviews: [], total: 0, averageRating: 0 };
   }
 };
 
 /**
- * Add a review for a gym (placeholder - reviews not implemented yet)
+ * Add a review for a gym
+ * Uses users-service endpoint: POST /api/users/gyms/:gymId/reviews
  * @param {string} gymId - Gym ID
  * @param {Object} reviewData - Review data { rating, comment }
  * @returns {Promise<Object>} Created review
  */
 export const addGymReview = async (gymId, reviewData) => {
   try {
-    // Reviews not implemented yet - throw error
-    // TODO: Implement review endpoints in backend
-    throw new Error('Review functionality not yet implemented in backend');
+    const response = await gymClient.post(`/api/users/gyms/${gymId}/reviews`, reviewData);
+    return extractData(response);
   } catch (error) {
     console.error('Error adding gym review:', error);
     throw error;
@@ -217,16 +310,29 @@ export const addGymReview = async (gymId, reviewData) => {
 };
 
 /**
- * Update a review (placeholder)
+ * Update a review
+ * Uses users-service endpoint: PUT /api/users/gyms/:gymId/reviews
  */
-export const updateGymReview = async (gymId, reviewId, reviewData) => {
-  throw new Error('Review functionality not yet implemented in backend');
+export const updateGymReview = async (gymId, reviewData) => {
+  try {
+    const response = await gymClient.put(`/api/users/gyms/${gymId}/reviews`, reviewData);
+    return extractData(response);
+  } catch (error) {
+    console.error('Error updating gym review:', error);
+    throw error;
+  }
 };
 
 /**
- * Delete a review (placeholder)
+ * Delete a review
+ * Uses users-service endpoint: DELETE /api/users/gyms/:gymId/reviews
  */
-export const deleteGymReview = async (gymId, reviewId) => {
-  throw new Error('Review functionality not yet implemented in backend');
+export const deleteGymReview = async (gymId) => {
+  try {
+    await gymClient.delete(`/api/users/gyms/${gymId}/reviews`);
+  } catch (error) {
+    console.error('Error deleting gym review:', error);
+    throw error;
+  }
 };
 

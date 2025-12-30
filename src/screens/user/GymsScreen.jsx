@@ -21,6 +21,7 @@ import {
   getNearbyGyms,
   getAllGyms,
   getGymsByCity,
+  getGymPhotos,
 } from '../../api/services/gymService';
 import {
   getGymReviews,
@@ -91,7 +92,7 @@ const GymsScreen = ({ navigation }) => {
         return;
       }
 
-      // Load reviews for each gym
+      // Load reviews and photos for each gym
       const gymsWithReviews = await Promise.all(
         gymsData.map(async (gym) => {
           // Extract logo from branding if available
@@ -108,12 +109,21 @@ const GymsScreen = ({ navigation }) => {
             console.warn(`[Gyms] Failed to load reviews for gym ${gym.id}:`, error);
           }
           
+          // Load photos for this gym
+          let photos = [];
+          try {
+            photos = await getGymPhotos(gym.id);
+          } catch (error) {
+            console.warn(`[Gyms] Failed to load photos for gym ${gym.id}:`, error);
+          }
+          
           return {
             ...gym,
             logoUrl: logoUrl,
             reviews: reviewsData.reviews || [],
             averageRating: reviewsData.averageRating || 0,
             reviewsCount: reviewsData.total || 0,
+            photos: photos || [],
             description: gym.branding?.description || null,
           };
         })
@@ -161,8 +171,8 @@ const GymsScreen = ({ navigation }) => {
   };
 
   const handleGymPress = (gym) => {
-    // Navigate to reviews screen
-    navigation.navigate('GymReviewsScreen', { gym });
+    // Navigate to gym profile screen
+    navigation.navigate('GymProfileScreen', { gym });
   };
 
   const handleAddReview = async (gym) => {
@@ -341,6 +351,31 @@ const GymsScreen = ({ navigation }) => {
                 </Text>
               )}
 
+              {/* Photo Preview */}
+              {gym.photos && gym.photos.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.photosPreview}
+                >
+                  {gym.photos.slice(0, 3).map((photo, index) => {
+                    const photoUrl = photo.url || photo.imageUrl || photo;
+                    if (!photoUrl) return null;
+                    const imageUrl = typeof photoUrl === 'string' && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))
+                      ? photoUrl
+                      : `${ENV.GYM_SERVICE_URL.replace('/api', '')}${photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`}`;
+                    return (
+                      <Image
+                        key={index}
+                        source={{ uri: imageUrl }}
+                        style={styles.photoPreview}
+                        resizeMode="cover"
+                      />
+                    );
+                  })}
+                </ScrollView>
+              )}
+
               <View style={styles.gymActions}>
                 <TouchableOpacity
                   style={styles.reviewButton}
@@ -367,7 +402,7 @@ const GymsScreen = ({ navigation }) => {
                 style={styles.viewButton}
                 onPress={() => handleGymPress(gym)}
               >
-                <Text style={styles.viewButtonText}>View All Reviews</Text>
+                <Text style={styles.viewButtonText}>View Profile & Send Inquiry</Text>
                 <Ionicons name="chevron-forward" size={18} color="#ffffff" />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -656,6 +691,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  photosPreview: {
+    marginBottom: 12,
+    marginHorizontal: -16,
+  },
+  photoPreview: {
+    width: 100,
+    height: 100,
+    marginRight: 8,
+    marginLeft: 16,
+    borderRadius: 8,
+    backgroundColor: '#e5e7eb',
   },
   modalOverlay: {
     flex: 1,

@@ -10,6 +10,8 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -491,45 +493,59 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
     return (
       <View key={mealType} style={styles.mealSection}>
-        <TouchableOpacity
-          style={styles.mealHeader}
-          onPress={() => {
-            setSelectedMeal(mealType);
-            setSearchQuery('');
-            setSearchResults([]);
-            setShowFoodModal(true); // Show modal immediately when meal is selected
-          }}
-        >
-          <View style={styles.mealHeaderLeft}>
-            <View style={[styles.mealIconContainer, { backgroundColor: `${mealConfig.color}20` }]}>
-              <Ionicons name={mealConfig.icon} size={24} color={mealConfig.color} />
-            </View>
-            <View style={styles.mealHeaderText}>
-              <Text style={styles.mealTitle}>{mealConfig.label}</Text>
-              <Text style={styles.mealTotal}>
-                {Math.round(mealTotal.calories)} kcal
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="add-circle-outline" size={24} color={mealConfig.color} />
-        </TouchableOpacity>
+        <View style={styles.mealHeader}>
+          <Text style={styles.mealTitle}>{mealConfig.label}</Text>
+          <TouchableOpacity 
+            style={styles.addMealButton}
+            onPress={() => {
+              setSelectedMeal(mealType);
+              setSearchQuery('');
+              setSearchResults([]);
+              setShowFoodModal(true);
+            }}
+          >
+            <Ionicons name="add" size={20} color="#10b981" />
+            <Text style={styles.addMealButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
 
         {mealItems.length > 0 ? (
           <View style={styles.mealItems}>
             {mealItems.map((item, index) => (
-              <View key={item.id || index} style={styles.foodItem}>
-                <View style={styles.foodItemLeft}>
-                  <Text style={styles.foodItemName}>{item.foodName}</Text>
-                  <Text style={styles.foodItemAmount}>
-                    {item.amount}g • {Math.round(item.calories)} kcal
+              <View key={item.id || index} style={styles.foodItemCard}>
+                <View style={styles.foodItemHeader}>
+                  <View style={styles.foodItemLeft}>
+                    <View style={styles.foodIconPlaceholder}>
+                      <Ionicons name="restaurant-outline" size={24} color="#6b7280" />
+                    </View>
+                    <View style={styles.foodItemInfo}>
+                      <Text style={styles.foodItemName}>{item.foodName}</Text>
+                      <Text style={styles.foodItemCalories}>
+                        {Math.round(item.calories)} kcal
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFood(mealType, item.id || item.foodId)}
+                    style={styles.removeButton}
+                  >
+                    <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.foodItemDetails}>
+                  <Text style={styles.foodDetailText}>
+                    Calories: {Math.round(item.calories)} kcal
+                  </Text>
+                  <Text style={styles.foodDetailText}>
+                    Carbs: {Math.round(item.carbs || 0)} g
+                  </Text>
+                  <Text style={styles.foodDetailText}>
+                    Protein: {Math.round(item.protein || 0)} g
+                  </Text>
+                  <Text style={styles.foodDetailText}>
+                    Fats: {Math.round(item.fat || 0)} g
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleRemoveFood(mealType, item.id || item.foodId)}
-                  style={styles.removeButton}
-                >
-                  <Ionicons name="close-circle" size={20} color="#ef4444" />
-                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -553,129 +569,88 @@ const NutritionDiaryScreen = ({ navigation }) => {
     );
   }
 
+  // Calculate macronutrient percentages based on goals (not total macros)
+  const carbsGoalPercentage = goals.carbs && goals.carbs > 0 
+    ? Math.min(100, Math.round(((dailyTotal.carbs || 0) / goals.carbs) * 100)) 
+    : 0;
+  const proteinGoalPercentage = goals.protein && goals.protein > 0 
+    ? Math.min(100, Math.round(((dailyTotal.protein || 0) / goals.protein) * 100)) 
+    : 0;
+  const fatGoalPercentage = goals.fat && goals.fat > 0 
+    ? Math.min(100, Math.round(((dailyTotal.fat || 0) / goals.fat) * 100)) 
+    : 0;
+
+  // Calculate circular progress for calories
+  const caloriesProgressAngle = Math.min(360, (caloriesProgress / 100) * 360);
+
   return (
-    <ScreenContainer>
+    <ScreenContainer noPadding={true}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nutrition Diary</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Date Selector */}
-        <View style={styles.dateSelector}>
-          <TouchableOpacity
-            onPress={() => {
-              const date = new Date(selectedDate);
-              date.setDate(date.getDate() - 1);
-              setSelectedDate(date.toISOString().split('T')[0]);
-            }}
-          >
-            <Ionicons name="chevron-back" size={20} color="#6b7280" />
-          </TouchableOpacity>
-          <Text style={styles.dateText}>
+        <Text style={styles.headerTitle}>Daily Activity</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.headerDate}>
             {new Date(selectedDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'short',
+              month: 'long',
               day: 'numeric',
             })}
           </Text>
-          <TouchableOpacity
-            onPress={() => {
-              const date = new Date(selectedDate);
-              date.setDate(date.getDate() + 1);
-              const today = new Date().toISOString().split('T')[0];
-              if (date.toISOString().split('T')[0] <= today) {
-                setSelectedDate(date.toISOString().split('T')[0]);
-              }
-            }}
-            disabled={selectedDate >= new Date().toISOString().split('T')[0]}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={selectedDate >= new Date().toISOString().split('T')[0] ? '#d1d5db' : '#6b7280'}
-            />
+          <TouchableOpacity style={styles.calendarButton}>
+            <Ionicons name="calendar-outline" size={20} color="#10b981" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Stats Card */}
-        {stats && (
-          <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>This Month</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.daysCompleted || 0}</Text>
-                <Text style={styles.statLabel}>Days Completed</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+        {/* Circular Progress Chart */}
+        {goals.dailyCalories ? (
+          <View style={styles.circularProgressContainer}>
+            <View style={styles.circularProgressWrapper}>
+              {/* Circular Progress Ring */}
+              <View style={styles.circularProgressOuter}>
+                <View style={styles.circularProgress}>
+                  <View style={styles.circularProgressInner}>
+                    <Text style={styles.circularProgressValue}>
+                      {Math.round(dailyTotal.calories || 0)}
+                    </Text>
+                    <Text style={styles.circularProgressLabel}>Total kcal</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {stats.averageCalories ? Math.round(stats.averageCalories) : 0}
-                </Text>
-                <Text style={styles.statLabel}>Avg Calories</Text>
+            </View>
+
+            {/* Macronutrient Boxes */}
+            <View style={styles.macroBoxesContainer}>
+              <View style={styles.macroBox}>
+                <View style={[styles.macroDot, { backgroundColor: '#ec4899' }]} />
+                <Text style={styles.macroBoxLabel}>Carbs</Text>
+                <Text style={styles.macroBoxPercentage}>{carbsGoalPercentage}%</Text>
+              </View>
+              <View style={styles.macroBox}>
+                <View style={[styles.macroDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={styles.macroBoxLabel}>Protein</Text>
+                <Text style={styles.macroBoxPercentage}>{proteinGoalPercentage}%</Text>
+              </View>
+              <View style={styles.macroBox}>
+                <View style={[styles.macroDot, { backgroundColor: '#f59e0b' }]} />
+                <Text style={styles.macroBoxLabel}>Fats</Text>
+                <Text style={styles.macroBoxPercentage}>{fatGoalPercentage}%</Text>
               </View>
             </View>
           </View>
+        ) : (
+          <View style={styles.setGoalsCard}>
+            <Ionicons name="nutrition-outline" size={24} color="#2563eb" />
+            <Text style={styles.setGoalsText}>Set your nutrition goals to track progress</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('CalorieGoalsScreen')}>
+              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
         )}
-
-        {/* Daily Progress */}
-        <View style={styles.progressCard}>
-          <Text style={styles.progressTitle}>Daily Progress</Text>
-          {goals.dailyCalories ? (
-            <>
-              <View style={styles.progressRow}>
-                <View style={styles.progressItem}>
-                  <Text style={styles.progressLabel}>Calories</Text>
-                  <Text style={styles.progressValue}>
-                    {Math.round(dailyTotal.calories || 0)} / {goals.dailyCalories || 0}
-                  </Text>
-                  <View style={styles.progressBarContainer}>
-                    <View
-                      style={[
-                        styles.progressBar,
-                        { width: `${Math.min(100, Math.max(0, caloriesProgress))}%`, backgroundColor: '#10b981' },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.progressPercentage}>{caloriesProgress}%</Text>
-                </View>
-              </View>
-              <View style={styles.macrosProgress}>
-                <View style={styles.macroProgressItem}>
-                  <Text style={styles.macroLabel}>Protein</Text>
-                  <Text style={styles.macroValue}>
-                    {Math.round(dailyTotal.protein || 0)}g / {goals.protein || 0}g
-                  </Text>
-                  <Text style={styles.macroPercentage}>{proteinProgress}%</Text>
-                </View>
-                <View style={styles.macroProgressItem}>
-                  <Text style={styles.macroLabel}>Carbs</Text>
-                  <Text style={styles.macroValue}>
-                    {Math.round(dailyTotal.carbs || 0)}g / {goals.carbs || 0}g
-                  </Text>
-                  <Text style={styles.macroPercentage}>{carbsProgress}%</Text>
-                </View>
-                <View style={styles.macroProgressItem}>
-                  <Text style={styles.macroLabel}>Fat</Text>
-                  <Text style={styles.macroValue}>
-                    {Math.round(dailyTotal.fat || 0)}g / {goals.fat || 0}g
-                  </Text>
-                  <Text style={styles.macroPercentage}>{fatProgress}%</Text>
-                </View>
-              </View>
-            </>
-          ) : (
-            <View style={styles.setGoalsCard}>
-              <Ionicons name="nutrition-outline" size={24} color="#2563eb" />
-              <Text style={styles.setGoalsText}>Set your nutrition goals to track progress</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('CalorieGoalsScreen')}>
-                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
 
         {/* Meals */}
         {Object.keys(MEAL_TYPES).map((mealType) => renderMealSection(mealType))}
@@ -695,8 +670,27 @@ const NutritionDiaryScreen = ({ navigation }) => {
             setSelectedFood(null);
           }}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContainer}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => {
+                setShowFoodModal(false);
+                setSearchQuery('');
+                setSearchResults([]);
+                setSelectedMeal(null);
+                setSelectedFood(null);
+              }}
+            />
+            <ScrollView 
+              style={styles.modalContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   Add to {MEAL_TYPES[selectedMeal]?.label}
@@ -733,11 +727,10 @@ const NutritionDiaryScreen = ({ navigation }) => {
               )}
 
               {!searching && searchResults.length > 0 && (
-                <FlatList
-                  data={searchResults}
-                  keyExtractor={(item, index) => item.id || item.foodId || index.toString()}
-                  renderItem={({ item }) => (
+                <View>
+                  {searchResults.map((item, index) => (
                     <TouchableOpacity
+                      key={item.id || item.foodId || index.toString()}
                       style={styles.searchResultItem}
                       onPress={() => handleSelectFood(item)}
                     >
@@ -751,9 +744,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
                       </View>
                       <Ionicons name="chevron-forward" size={20} color="#6b7280" />
                     </TouchableOpacity>
-                  )}
-                  style={styles.searchResultsList}
-                />
+                  ))}
+                </View>
               )}
 
               {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
@@ -765,8 +757,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
                   </Text>
                 </View>
               )}
-            </View>
-          </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 
@@ -787,8 +779,29 @@ const NutritionDiaryScreen = ({ navigation }) => {
             }
           }}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContainer}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => {
+                setSelectedFood(null);
+                if (selectedMeal) {
+                  setSearchQuery('');
+                  setSearchResults([]);
+                } else {
+                  setShowFoodModal(false);
+                }
+              }}
+            />
+            <ScrollView 
+              style={styles.modalContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   {selectedFood.name || selectedFood.foodName}
@@ -853,8 +866,8 @@ const NutritionDiaryScreen = ({ navigation }) => {
                 <Ionicons name="add-circle" size={20} color="#ffffff" />
                 <Text style={styles.addButtonText}>Add to {MEAL_TYPES[selectedMeal]?.label}</Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       )}
     </ScreenContainer>
@@ -876,12 +889,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
     backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   backButton: {
     width: 40,
@@ -893,13 +904,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 'auto',
+  },
+  headerDate: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  calendarButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
   dateSelector: {
     flexDirection: 'row',
@@ -949,17 +985,77 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 4,
   },
-  progressCard: {
+  // Circular Progress Chart
+  circularProgressContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  circularProgressWrapper: {
+    marginBottom: 24,
+  },
+  circularProgressOuter: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 20,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  circularProgress: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     backgroundColor: '#ffffff',
-    margin: 16,
-    marginTop: 0,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgressInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circularProgressValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  circularProgressLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  // Macronutrient Boxes
+  macroBoxesContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  macroBox: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  macroDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  macroBoxLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  macroBoxPercentage: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   progressTitle: {
     fontSize: 16,
@@ -1024,16 +1120,7 @@ const styles = StyleSheet.create({
     color: '#10b981',
   },
   mealSection: {
-    backgroundColor: '#ffffff',
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: 24,
   },
   mealHeader: {
     flexDirection: 'row',
@@ -1041,57 +1128,78 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  mealHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  mealIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  mealHeaderText: {
-    flex: 1,
-  },
   mealTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#111827',
   },
-  mealTotal: {
+  addMealButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#f0fdf4',
+  },
+  addMealButtonText: {
     fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
+    fontWeight: '600',
+    color: '#10b981',
   },
   mealItems: {
     marginTop: 8,
   },
-  foodItem: {
+  foodItemCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  foodItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   foodItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  foodIconPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  foodItemInfo: {
     flex: 1,
   },
   foodItemName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
-  foodItemAmount: {
-    fontSize: 12,
+  foodItemCalories: {
+    fontSize: 14,
     color: '#6b7280',
+  },
+  foodItemDetails: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  foodDetailText: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 6,
   },
   removeButton: {
     padding: 4,
@@ -1121,15 +1229,19 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   modalHeader: {
     flexDirection: 'row',

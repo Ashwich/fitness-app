@@ -1,28 +1,37 @@
-import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 
-export const ScreenContainer = ({ children }) => (
+export const ScreenContainer = ({ children, noPadding = false }) => (
   <SafeAreaView style={styles.safeArea}>
-    <ScrollView
-      contentContainerStyle={styles.content}
-      style={styles.fill}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
+    {noPadding ? (
+      <View style={styles.fill}>
+        {children}
+      </View>
+    ) : (
+      <ScrollView
+        contentContainerStyle={styles.content}
+        style={styles.fill}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    )}
   </SafeAreaView>
 );
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#ffffff',
   },
   fill: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
   content: {
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 0,
     gap: 12,
+    backgroundColor: '#ffffff',
   },
 });
 

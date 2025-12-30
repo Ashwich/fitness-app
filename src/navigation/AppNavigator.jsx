@@ -33,7 +33,9 @@ import CreatePostScreen from '../screens/user/CreatePostScreen';
 import NotificationsScreen from '../screens/user/NotificationsScreen';
 import MessagesScreen from '../screens/user/MessagesScreen';
 import ChatScreen from '../screens/user/ChatScreen';
+import SearchScreen from '../screens/user/SearchScreen';
 import GymsScreen from '../screens/user/GymsScreen';
+import GymProfileScreen from '../screens/user/GymProfileScreen';
 import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import AttendanceScreen from '../screens/user/AttendanceScreen';
 import GymReviewsScreen from '../screens/user/GymReviewsScreen';
@@ -89,6 +91,11 @@ const HomeStackNavigator = () => (
       options={{ title: 'Create Post' }}
     />
     <HomeStack.Screen
+      name="SearchScreen"
+      component={SearchScreen}
+      options={{ title: 'Search' }}
+    />
+    <HomeStack.Screen
       name="NotificationsScreen"
       component={NotificationsScreen}
       options={{ title: 'Notifications' }}
@@ -102,6 +109,11 @@ const HomeStackNavigator = () => (
       name="ChatScreen"
       component={ChatScreen}
       options={{ title: 'Chat' }}
+    />
+    <HomeStack.Screen
+      name="GymProfileScreen"
+      component={GymProfileScreen}
+      options={{ title: 'Gym Profile' }}
     />
   </HomeStack.Navigator>
 );
@@ -173,6 +185,11 @@ const UserStackNavigator = () => (
       component={GymReviewsScreen}
       options={{ title: 'Gym Reviews' }}
     />
+    <UserStack.Screen
+      name="GymProfileScreen"
+      component={GymProfileScreen}
+      options={{ title: 'Gym Profile' }}
+    />
   </UserStack.Navigator>
 );
 
@@ -215,11 +232,15 @@ const AppTabNavigator = () => (
   <AppTabs.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarActiveTintColor: '#2563eb',
+      tabBarActiveTintColor: '#9333ea',
       tabBarInactiveTintColor: '#9ca3af',
       tabBarStyle: {
         paddingBottom: 6,
+        paddingTop: 6,
         height: 60,
+        backgroundColor: '#ffffff',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
       },
       tabBarIcon: ({ color, size, focused }) => {
         let iconName = 'home-outline';
@@ -229,10 +250,10 @@ const AppTabNavigator = () => (
           iconName = focused ? 'grid' : 'grid-outline';
         } else if (route.name === 'Diary') {
           iconName = focused ? 'restaurant' : 'restaurant-outline';
-        } else if (route.name === 'Gyms') {
-          iconName = focused ? 'fitness' : 'fitness-outline';
         } else if (route.name === 'Profile') {
           iconName = focused ? 'person' : 'person-outline';
+        } else if (route.name === 'Gyms') {
+          iconName = focused ? 'fitness' : 'fitness-outline';
         }
         return <Ionicons name={iconName} size={size} color={color} />;
       },
@@ -254,14 +275,14 @@ const AppTabNavigator = () => (
       options={{ title: 'Diary' }} 
     />
     <AppTabs.Screen 
-      name="Gyms" 
-      component={GymsScreen} 
-      options={{ title: 'Gyms' }} 
-    />
-    <AppTabs.Screen 
       name="Profile" 
       component={ProfileStackNavigator} 
       options={{ title: 'Profile' }} 
+    />
+    <AppTabs.Screen 
+      name="Gyms" 
+      component={GymsScreen} 
+      options={{ title: 'Gym' }} 
     />
   </AppTabs.Navigator>
 );

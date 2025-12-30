@@ -11,20 +11,40 @@ const LoginScreen = ({ navigation }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    // Prevent multiple rapid clicks
+    if (loading || isSubmitting) {
+      return;
+    }
+
     if (!identifier || !password) {
       Alert.alert('Missing fields', 'Please fill in both username/email and password.');
       return;
     }
 
     setLoading(true);
+    setIsSubmitting(true);
     try {
       await login({ identifier, password });
     } catch (error) {
-      Alert.alert('Login failed', getReadableError(error));
+      // Handle rate limiting specifically
+      if (error.response?.status === 429) {
+        Alert.alert(
+          'Too Many Requests',
+          'You have made too many login attempts. Please wait a few minutes before trying again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Login failed', getReadableError(error));
+      }
     } finally {
       setLoading(false);
+      // Add a small delay before allowing another submission
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 1000);
     }
   };
 

@@ -328,19 +328,21 @@ const UserDashboardScreen = ({ navigation }) => {
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profilePhotoButton}>
-          {profilePhoto ? (
-            <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
-          ) : (
-            <View style={styles.profilePhotoPlaceholder}>
-              <Ionicons name="person" size={24} color="#ffffff" />
-            </View>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Fitsera</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
-          <Ionicons name="settings-outline" size={24} color="#ffffff" />
-        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profilePhotoButton}>
+            {profilePhoto ? (
+              <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+            ) : (
+              <View style={styles.profilePhotoPlaceholder}>
+                <Ionicons name="person" size={24} color="#ffffff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Fitsera</Text>
+          <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
+            <Ionicons name="settings-outline" size={24} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -349,6 +351,7 @@ const UserDashboardScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        <View style={styles.contentWrapper}>
         {profileCompletion.percentage < 100 && (
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
@@ -516,6 +519,7 @@ const UserDashboardScreen = ({ navigation }) => {
 
           </>
         )}
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -536,10 +540,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#10b981',
     paddingTop: 50,
     paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
   profilePhotoButton: {
     width: 40,
@@ -579,8 +586,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
   },
   scrollContent: {
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
     paddingBottom: 32,
+  },
+  contentWrapper: {
+    paddingHorizontal: 20,
   },
   // Progress Card Styles
   progressCard: {

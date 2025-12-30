@@ -17,6 +17,9 @@ import { useAuth } from '../../context/AuthContext';
 import { getNotifications, markAsRead, markAllAsRead } from '../../api/services/notificationService';
 import { getReadableError } from '../../utils/apiError';
 import { ENV } from '../../config/env';
+import { useSocket } from '../../context/SocketContext';
+import { acceptJoinRequest, rejectJoinRequest } from '../../api/services/userCommunityChatService';
+import communityChatSocketService from '../../services/communityChatSocketService';
 
 const formatTimestamp = (dateString) => {
   const date = new Date(dateString);
@@ -35,6 +38,7 @@ const formatTimestamp = (dateString) => {
 
 const getNotificationText = (notification) => {
   const actorName = notification.actor?.profile?.fullName || notification.actor?.username || 'Someone';
+  const gymName = notification.gym?.name || notification.room?.name || 'a gym';
   
   switch (notification.type) {
     case 'LIKE':
@@ -51,13 +55,17 @@ const getNotificationText = (notification) => {
       return `${actorName} commented on your post`;
     case 'FOLLOW':
       return `${actorName} started following you`;
+    case 'COMMUNITY_CHAT_REQUEST':
+    case 'COMMUNITY_JOIN_REQUEST':
+      return `${gymName} invited you to join "${notification.room?.name || 'a community group'}"`;
     default:
-      return 'New notification';
+      return notification.message || 'New notification';
   }
 };
 
 const NotificationsScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { socketService } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,7 +101,131 @@ const NotificationsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
-    }, [loadNotifications])
+      
+      // Connect to community chat socket service for join requests
+      communityChatSocketService.connect();
+      
+      // Listen for new notifications via socket (users-service)
+      const unsubscribeNewNotification = socketService.on('new-notification', (notification) => {
+        console.log('[NotificationsScreen] Received new notification via socket:', notification);
+        
+        // For COMMUNITY_CHAT_REQUEST, ensure proper structure
+        if (notification.type === 'COMMUNITY_CHAT_REQUEST') {
+          // Ensure room, gym, and requestId are properly set
+          if (!notification.room && notification.data?.roomId) {
+            notification.room = {
+              id: notification.data.roomId,
+              name: notification.data.roomName,
+            };
+          }
+          if (!notification.gym && notification.data?.gymName) {
+            notification.gym = {
+              name: notification.data.gymName,
+            };
+          }
+          if (!notification.requestId && notification.data?.requestId) {
+            notification.requestId = notification.data.requestId;
+          }
+          if (!notification.roomId && notification.data?.roomId) {
+            notification.roomId = notification.data.roomId;
+          }
+        }
+        
+        setNotifications((prev) => {
+          // Check if notification already exists
+          const exists = prev.find(n => n.id === notification.id);
+          if (exists) {
+            return prev;
+          }
+          // Add new notification at the beginning
+          return [notification, ...prev];
+        });
+        
+        // Also reload notifications to ensure we have the latest from the API
+        setTimeout(() => {
+          loadNotifications();
+        }, 500);
+      });
+      
+      // Listen for community chat join requests from gym-service (port 4000)
+      const unsubscribeJoinRequest = communityChatSocketService.onJoinRequest((data) => {
+        console.log('[NotificationsScreen] Received community join request from gym-service:', data);
+        // Create a notification object from the join request
+        const notification = {
+          id: data.id || data.requestId || `join-request-${Date.now()}`,
+          type: 'COMMUNITY_CHAT_REQUEST',
+          message: `You've been invited to join "${data.roomName || 'a community group'}"`,
+          room: {
+            id: data.roomId,
+            name: data.roomName,
+          },
+          gym: {
+            id: data.gymId,
+            name: data.gymName,
+          },
+          requestId: data.id || data.requestId,
+          roomId: data.roomId,
+          read: false,
+          createdAt: data.createdAt || new Date().toISOString(),
+        };
+        setNotifications((prev) => {
+          const exists = prev.find(n => n.id === notification.id);
+          if (exists) {
+            return prev;
+          }
+          // Reload notifications to get the full notification from backend
+          loadNotifications();
+          return [notification, ...prev];
+        });
+      });
+      
+      // Also listen on regular socket (for backward compatibility)
+      const unsubscribeJoinRequestLegacy = socketService.on('community-join-request', (data) => {
+        console.log('[NotificationsScreen] Received community join request (legacy):', data);
+        // Create notification object from the join request data
+        const notification = {
+          id: data.requestId || `join-request-${Date.now()}`,
+          type: 'COMMUNITY_CHAT_REQUEST', // Use same type as backend
+          message: data.message || `You've been invited to join "${data.roomName || 'a community group'}"`,
+          room: {
+            id: data.roomId,
+            name: data.roomName,
+          },
+          gym: {
+            name: data.gymName,
+          },
+          requestId: data.requestId,
+          roomId: data.roomId,
+          data: {
+            requestId: data.requestId,
+            roomId: data.roomId,
+            roomName: data.roomName,
+            gymName: data.gymName,
+          },
+          read: false,
+          createdAt: data.createdAt || new Date().toISOString(),
+        };
+        setNotifications((prev) => {
+          const exists = prev.find(n => n.id === notification.id);
+          if (exists) {
+            return prev;
+          }
+          // Reload notifications to get the full notification from backend
+          setTimeout(() => {
+            loadNotifications();
+          }, 500);
+          return [notification, ...prev];
+        });
+      });
+      
+      return () => {
+        unsubscribeNewNotification();
+        unsubscribeJoinRequest();
+        unsubscribeJoinRequestLegacy();
+        // Don't disconnect community chat socket - it should stay connected
+        // communityChatSocketService.disconnect();
+      };
+    }, [loadNotifications, socketService])
   );
 
   const onRefresh = async () => {
@@ -115,13 +247,62 @@ const NotificationsScreen = ({ navigation }) => {
     }
 
     // Navigate based on type
-    if (notification.postId) {
+    if (notification.type === 'COMMUNITY_JOIN_REQUEST' || notification.type === 'COMMUNITY_CHAT_REQUEST') {
+      // Show accept/reject dialog for join requests
+      handleJoinRequestAction(notification);
+    } else if (notification.postId) {
       // Navigate to post (you might need to create a PostDetailScreen)
       // For now, navigate to profile
       navigation.navigate('UserProfileScreen', { userId: notification.actorId });
     } else if (notification.type === 'FOLLOW') {
       navigation.navigate('UserProfileScreen', { userId: notification.actorId });
     }
+  };
+
+  const handleJoinRequestAction = (notification) => {
+    const roomName = notification.room?.name || notification.data?.roomName || 'this community group';
+    const requestId = notification.requestId || notification.data?.requestId || notification.id;
+    const roomId = notification.roomId || notification.data?.roomId;
+    
+    Alert.alert(
+      'Join Community Group',
+      `Do you want to join "${roomName}"?`,
+      [
+        {
+          text: 'Reject',
+          style: 'cancel',
+          onPress: async () => {
+            try {
+              await rejectJoinRequest(requestId, roomId);
+              setNotifications((prev) =>
+                prev.filter((n) => n.id !== notification.id)
+              );
+              Alert.alert('Success', 'Join request rejected');
+            } catch (error) {
+              console.error('Error rejecting join request:', error);
+              Alert.alert('Error', getReadableError(error));
+            }
+          },
+        },
+        {
+          text: 'Accept',
+          onPress: async () => {
+            try {
+              await acceptJoinRequest(requestId, roomId);
+              setNotifications((prev) =>
+                prev.filter((n) => n.id !== notification.id)
+              );
+              Alert.alert('Success', `You've joined "${roomName}"!`);
+              // Optionally navigate to the community chat room
+              // navigation.navigate('CommunityChatScreen', { roomId: notification.roomId });
+            } catch (error) {
+              console.error('Error accepting join request:', error);
+              Alert.alert('Error', getReadableError(error));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleMarkAllAsRead = async () => {
@@ -202,6 +383,36 @@ const NotificationsScreen = ({ navigation }) => {
                     <Text style={styles.timestamp}>
                       {formatTimestamp(notification.createdAt)}
                     </Text>
+                    {(notification.type === 'COMMUNITY_JOIN_REQUEST' || notification.type === 'COMMUNITY_CHAT_REQUEST') && (
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.acceptButton]}
+                          onPress={() => {
+                            handleNotificationPress(notification);
+                          }}
+                        >
+                          <Text style={styles.acceptButtonText}>Accept</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.rejectButton]}
+                          onPress={async () => {
+                            try {
+                              const requestId = notification.requestId || notification.data?.requestId || notification.id;
+                              const roomId = notification.roomId || notification.data?.roomId;
+                              await rejectJoinRequest(requestId, roomId);
+                              setNotifications((prev) =>
+                                prev.filter((n) => n.id !== notification.id)
+                              );
+                            } catch (error) {
+                              console.error('Error rejecting join request:', error);
+                              Alert.alert('Error', getReadableError(error));
+                            }
+                          }}
+                        >
+                          <Text style={styles.rejectButtonText}>Reject</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                   {notification.post?.mediaUrl && (
                     <Image
@@ -334,6 +545,34 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 8,
     textAlign: 'center',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  acceptButton: {
+    backgroundColor: '#10b981',
+  },
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rejectButton: {
+    backgroundColor: '#ef4444',
+  },
+  rejectButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

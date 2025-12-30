@@ -360,6 +360,7 @@ const styles = StyleSheet.create({
     borderColor: '#d1d5db',
     backgroundColor: '#ffffff',
     alignItems: 'center',
+
   },
   unitOptionSelected: {
     borderColor: '#2563eb',

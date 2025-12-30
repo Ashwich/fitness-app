@@ -30,6 +30,9 @@ export const getReadableError = (error, fallback = 'Something went wrong') => {
       if (error.response.status === 404) {
         return 'Endpoint not found. Please check the API URL.';
       }
+      if (error.response.status === 429) {
+        return 'Too many requests. Please wait a few minutes before trying again.';
+      }
       if (error.response.status >= 500) {
         return 'Server error. Please try again later.';
       }

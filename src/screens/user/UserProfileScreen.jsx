@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +22,9 @@ import { getUserPosts } from '../../api/services/postService';
 import { getFollowStats, toggleFollow, checkFollowStatus } from '../../api/services/followService';
 import { pickProfilePhoto } from '../../services/profilePhotoService';
 import { getReadableError } from '../../utils/apiError';
+import { ENV } from '../../config/env';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UserProfileScreen = ({ navigation, route }) => {
   const { user, logout } = useAuth();
@@ -83,11 +88,19 @@ const UserProfileScreen = ({ navigation, route }) => {
         
         // Load own posts
         const userPosts = await getUserPosts(userId, 50, 0);
-        const transformedPosts = userPosts.map((post) => ({
-          id: post.id,
-          type: post.mediaType,
-          url: post.mediaUrl,
-        }));
+        const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
+        const transformedPosts = userPosts.map((post) => {
+          let mediaUrl = post.mediaUrl;
+          if (mediaUrl && !mediaUrl.startsWith('http')) {
+            mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
+          }
+          return {
+            id: post.id,
+            type: post.mediaType,
+            url: mediaUrl,
+            views: post.viewsCount || post.views || 0,
+          };
+        });
         
         // Deduplicate posts by ID to prevent duplicate keys
         const uniquePosts = transformedPosts.reduce((acc, post) => {
@@ -118,11 +131,19 @@ const UserProfileScreen = ({ navigation, route }) => {
         
         // Load user's posts
         const userPosts = await getUserPosts(userId, 50, 0);
-        const transformedPosts = userPosts.map((post) => ({
-          id: post.id,
-          type: post.mediaType,
-          url: post.mediaUrl,
-        }));
+        const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
+        const transformedPosts = userPosts.map((post) => {
+          let mediaUrl = post.mediaUrl;
+          if (mediaUrl && !mediaUrl.startsWith('http')) {
+            mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
+          }
+          return {
+            id: post.id,
+            type: post.mediaType,
+            url: mediaUrl,
+            views: post.viewsCount || post.views || 0,
+          };
+        });
         
         // Deduplicate posts by ID to prevent duplicate keys
         const uniquePosts = transformedPosts.reduce((acc, post) => {
@@ -209,112 +230,113 @@ const UserProfileScreen = ({ navigation, route }) => {
     );
   }
 
+  // Get banner image URL
+  const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
+  let bannerImageUrl = profile?.bannerUrl || profile?.bannerImage || null;
+  if (bannerImageUrl && !bannerImageUrl.startsWith('http')) {
+    bannerImageUrl = bannerImageUrl.startsWith('/') ? `${baseURL}${bannerImageUrl}` : `${baseURL}/${bannerImageUrl}`;
+  }
+
+  // Format username with @
+  const displayUsername = profile?.username 
+    ? `@${profile.username}` 
+    : profile?.email 
+      ? `@${profile.email.split('@')[0]}` 
+      : '';
+
+  // Format followers count
+  const formatCount = (count) => {
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
+  };
+
   return (
-    <ScreenContainer>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isOwnProfile ? 'My Profile' : profile?.fullName || profile?.username}
-        </Text>
-        {isOwnProfile && (
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('CreatePostScreen')}
-            style={styles.postIconButton}
-          >
-            <Ionicons name="add-circle-outline" size={28} color="#2563eb" />
-          </TouchableOpacity>
-        )}
-        {!isOwnProfile && (
-          <View style={styles.placeholder} />
-        )}
-      </View>
-
+    <ScreenContainer noPadding={true}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity
-            style={styles.profilePhotoContainer}
-            onPress={isOwnProfile && isEditing ? handleUploadPhoto : undefined}
-          >
-            {profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
-            ) : (
-              <View style={styles.profilePhotoPlaceholder}>
-                <Ionicons name="person" size={40} color="#6b7280" />
-              </View>
-            )}
-            {isOwnProfile && isEditing && (
-              <View style={styles.editPhotoBadge}>
-                <Ionicons name="camera" size={16} color="#ffffff" />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{posts.length}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
+        {/* Banner Image */}
+        <View style={styles.bannerContainer}>
+          {bannerImageUrl ? (
+            <Image source={{ uri: bannerImageUrl }} style={styles.bannerImage} resizeMode="cover" />
+          ) : (
+            <View style={styles.bannerPlaceholder}>
+              <Ionicons name="image-outline" size={48} color="#9ca3af" />
             </View>
-            <TouchableOpacity style={styles.statItem}>
-              <Text style={styles.statValue}>{followers}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem}>
-              <Text style={styles.statValue}>{following}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+          )}
+          
+          {/* Profile Picture Overlay */}
+          <View style={styles.profilePictureOverlay}>
+            <TouchableOpacity
+              style={styles.profilePhotoContainer}
+              onPress={isOwnProfile && isEditing ? handleUploadPhoto : undefined}
+            >
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+              ) : (
+                <View style={styles.profilePhotoPlaceholder}>
+                  <Ionicons name="person" size={50} color="#6b7280" />
+                </View>
+              )}
+              {isOwnProfile && isEditing && (
+                <View style={styles.editPhotoBadge}>
+                  <Ionicons name="camera" size={16} color="#ffffff" />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* User Info */}
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{profile?.fullName || profile?.username || 'User'}</Text>
-          {isEditing ? (
-            <>
-              <TextInput
-                style={styles.bioInput}
-                placeholder="Bio"
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={3}
-              />
-              <TextInput
-                style={styles.professionInput}
-                placeholder="Profession"
-                value={profession}
-                onChangeText={setProfession}
-              />
-            </>
-          ) : (
-            <>
-              {bio ? <Text style={styles.bio}>{bio}</Text> : null}
-              {profession ? <Text style={styles.profession}>{profession}</Text> : null}
-            </>
-          )}
+        {/* User Name and Handle */}
+        <View style={styles.userNameSection}>
+          <Text style={styles.userName}>{profile?.fullName || profile?.username || 'User'}</Text>
+          {displayUsername ? <Text style={styles.userHandle}>{displayUsername}</Text> : null}
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{posts.length}</Text>
+            <Text style={styles.statLabel}>Posts</Text>
+          </View>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statValue}>{formatCount(followers)}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statValue}>{formatCount(following)}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           {isOwnProfile ? (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={isEditing ? handleSave : handleEdit}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isEditing ? 'Save' : 'Edit Profile'}
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={isEditing ? handleSave : handleEdit}
+              >
+                <Text style={styles.editProfileButtonText}>
+                  {isEditing ? 'Save' : 'Edit Profile'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageButton}
+                onPress={() => {
+                  navigation.navigate('MessagesScreen');
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </>
           ) : (
             <>
               <TouchableOpacity
-                style={[styles.primaryButton, isFollowing && styles.followingButton]}
+                style={[styles.followButton, isFollowing && styles.followingButton]}
                 onPress={handleFollow}
               >
-                <Text style={styles.primaryButtonText}>
+                <Text style={styles.followButtonText}>
                   {isFollowing ? 'Following' : 'Follow'}
                 </Text>
               </TouchableOpacity>
@@ -328,34 +350,94 @@ const UserProfileScreen = ({ navigation, route }) => {
                     });
                   }}
                 >
-                  <Ionicons name="mail-outline" size={20} color="#111827" />
+                  <Ionicons name="chatbubble-outline" size={20} color="#ffffff" />
                 </TouchableOpacity>
               )}
             </>
           )}
         </View>
 
-        {/* Posts Grid */}
-        <View style={styles.postsSection}>
-          <Text style={styles.postsSectionTitle}>Posts</Text>
+        {/* Bio Section */}
+        {!isEditing && (bio || profession) && (
+          <View style={styles.bioSection}>
+            {bio ? <Text style={styles.bio}>{bio}</Text> : null}
+            {profession ? <Text style={styles.profession}>{profession}</Text> : null}
+          </View>
+        )}
+
+        {/* Edit Mode Inputs */}
+        {isEditing && (
+          <View style={styles.editSection}>
+            <TextInput
+              style={styles.bioInput}
+              placeholder="Bio"
+              value={bio}
+              onChangeText={setBio}
+              multiline
+              numberOfLines={3}
+            />
+            <TextInput
+              style={styles.professionInput}
+              placeholder="Profession"
+              value={profession}
+              onChangeText={setProfession}
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Photos Section */}
+        <View style={styles.photosSection}>
+          <View style={styles.photosSectionHeader}>
+            <Text style={styles.photosSectionTitle}>Photos</Text>
+            {posts.length > 0 && (
+              <TouchableOpacity>
+                <Text style={styles.seeAllLink}>See All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {posts.length === 0 ? (
             <View style={styles.emptyPosts}>
               <Ionicons name="grid-outline" size={48} color="#9ca3af" />
               <Text style={styles.emptyPostsText}>No posts yet</Text>
             </View>
           ) : (
-            <View style={styles.postsGrid}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.photosScrollContent}
+            >
               {posts.map((post, index) => (
-                <TouchableOpacity key={post.id || `post-${index}-${post.url}`} style={styles.postThumbnail}>
-                  <Image source={{ uri: post.url }} style={styles.thumbnailImage} />
+                <TouchableOpacity 
+                  key={post.id || `post-${index}-${post.url}`} 
+                  style={styles.photoThumbnail}
+                  onPress={() => {
+                    // Navigate to post detail or open in full screen
+                    navigation.navigate('PostDetailScreen', { postId: post.id });
+                  }}
+                >
+                  <Image source={{ uri: post.url }} style={styles.photoThumbnailImage} />
                   {post.type === 'video' && (
                     <View style={styles.videoBadge}>
                       <Ionicons name="play" size={16} color="#ffffff" />
                     </View>
                   )}
+                  <View style={styles.photoViewsOverlay}>
+                    <Ionicons name="eye-outline" size={14} color="#ffffff" />
+                    <Text style={styles.photoViewsText}>
+                      {post.views ? formatCount(post.views) : '0'} Views
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           )}
         </View>
 
@@ -397,32 +479,6 @@ const UserProfileScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  editButton: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  postIconButton: {
-    padding: 4,
-  },
-  placeholder: {
-    width: 40,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -438,158 +494,276 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  profileHeader: {
-    flexDirection: 'row',
-    padding: 16,
+  // Banner Section
+  bannerContainer: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+    backgroundColor: '#1f2937',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#374151',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profilePictureOverlay: {
+    position: 'absolute',
+    bottom: -60,
+    left: 0,
+    right: 0,
     alignItems: 'center',
   },
   profilePhotoContainer: {
     position: 'relative',
-    marginRight: 20,
   },
   profilePhoto: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: '#ffffff',
   },
   profilePhotoPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#ffffff',
   },
   editPhotoBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#2563eb',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#9333ea',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ffffff',
   },
+  // User Name Section
+  userNameSection: {
+    alignItems: 'center',
+    marginTop: 70,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  userHandle: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  // Stats Section
   statsContainer: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 13,
     color: '#6b7280',
-    marginTop: 4,
   },
-  userInfo: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  // Action Buttons
+  actionButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    gap: 12,
+    justifyContent: 'center',
   },
-  username: {
-    fontSize: 16,
+  editProfileButton: {
+    flex: 1,
+    backgroundColor: '#9333ea',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    maxWidth: 200,
+  },
+  editProfileButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+  },
+  followButton: {
+    flex: 1,
+    backgroundColor: '#9333ea',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    maxWidth: 200,
+  },
+  followingButton: {
+    backgroundColor: '#e5e7eb',
+  },
+  followButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  messageButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#9333ea',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Bio Section
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   bio: {
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   profession: {
     fontSize: 14,
     color: '#6b7280',
-    marginTop: 4,
+  },
+  // Edit Section
+  editSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   bioInput: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 14,
-    minHeight: 80,
+    minHeight: 100,
     marginBottom: 12,
     textAlignVertical: 'top',
+    backgroundColor: '#f9fafb',
   },
   professionInput: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 14,
+    marginBottom: 16,
+    backgroundColor: '#f9fafb',
   },
-  actionButtons: {
+  editActions: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 24,
     gap: 12,
   },
-  primaryButton: {
+  cancelButton: {
     flex: 1,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingVertical: 10,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  followingButton: {
-    backgroundColor: '#e5e7eb',
+  cancelButtonText: {
+    color: '#374151',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  primaryButtonText: {
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#9333ea',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  saveButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
-  messageButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
+  // Photos Section
+  photosSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  postsSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  postsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  postsGrid: {
+  photosSectionHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  postThumbnail: {
-    width: '32%',
-    aspectRatio: 1,
+  photosSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  seeAllLink: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  photosScrollContent: {
+    gap: 12,
+  },
+  photoThumbnail: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    marginRight: 12,
     position: 'relative',
+    overflow: 'hidden',
   },
-  thumbnailImage: {
+  photoThumbnailImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 12,
+  },
+  photoViewsOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  photoViewsText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '500',
   },
   videoBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 4,
-    padding: 4,
+    borderRadius: 6,
+    padding: 6,
   },
   emptyPosts: {
     paddingVertical: 60,
@@ -600,8 +774,9 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 12,
   },
+  // Logout Section
   logoutSection: {
-    padding: 16,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     marginTop: 24,
