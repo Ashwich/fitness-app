@@ -15,6 +15,10 @@ export default {
     },
     ios: {
       supportsTablet: true,
+      infoPlist: {
+        NSHealthShareUsageDescription: 'This app needs access to your health data to track your steps and fitness activities.',
+        NSHealthUpdateUsageDescription: 'This app needs access to update your health data for step tracking.',
+      },
     },
     android: {
       package: 'com.fitsera.app',
@@ -27,6 +31,10 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      permissions: [
+        'android.permission.ACTIVITY_RECOGNITION',
+        'android.permission.FOREGROUND_SERVICE',
+      ],
       // Allow cleartext (HTTP) traffic for development
       usesCleartextTraffic: true,
       networkSecurityConfig: {

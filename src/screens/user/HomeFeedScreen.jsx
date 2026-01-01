@@ -379,31 +379,72 @@ const HomeFeedScreen = ({ navigation }) => {
     const commentText = commentInputs[postId]?.trim();
     if (!commentText) return;
 
+    // Clear input immediately for better UX
+    const originalInput = commentInputs[postId];
+    setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+
     try {
       const result = await addComment(postId, commentText);
+      
+      // Fetch updated post to get all comments
       const updatedPost = await getPost(postId);
       
-      // Ensure commentsList is always an array
-      const updatedComments = Array.isArray(updatedPost.comments) 
-        ? updatedPost.comments 
-        : (updatedPost.commentsList || []);
+      // Extract comments from various possible response structures
+      let updatedComments = [];
+      if (Array.isArray(updatedPost.comments)) {
+        updatedComments = updatedPost.comments;
+      } else if (Array.isArray(updatedPost.commentsList)) {
+        updatedComments = updatedPost.commentsList;
+      } else if (result?.comment) {
+        // If addComment returns the comment directly
+        updatedComments = [result.comment];
+      } else if (result?.comments && Array.isArray(result.comments)) {
+        updatedComments = result.comments;
+      }
       
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
+      // Get current post to preserve other data
+      setPosts((prevPosts) => {
+        const currentPost = prevPosts.find(p => p.id === postId);
+        if (!currentPost) return prevPosts;
+        
+        // Merge existing comments with new ones, avoiding duplicates
+        const existingComments = Array.isArray(currentPost.commentsList) ? currentPost.commentsList : [];
+        const mergedComments = [...existingComments];
+        
+        // Add new comments that don't already exist
+        updatedComments.forEach(newComment => {
+          const exists = mergedComments.some(c => 
+            c.id === newComment.id || 
+            (c.content === newComment.content && 
+             Math.abs(new Date(c.createdAt || c.created_at || 0) - new Date(newComment.createdAt || newComment.created_at || 0)) < 1000)
+          );
+          if (!exists) {
+            mergedComments.push(newComment);
+          }
+        });
+        
+        // Sort by creation date
+        mergedComments.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.created_at || 0);
+          const dateB = new Date(b.createdAt || b.created_at || 0);
+          return dateA - dateB;
+        });
+        
+        return prevPosts.map((post) =>
           post.id === postId
             ? {
                 ...post,
-                comments: updatedPost.commentsCount || updatedComments.length || post.comments + 1,
-                commentsList: updatedComments,
+                comments: updatedPost.commentsCount || mergedComments.length || (post.comments || 0) + 1,
+                commentsList: mergedComments,
               }
             : post
-        )
-      );
-      
-      setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+        );
+      });
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment');
+      // Restore input on error
+      setCommentInputs((prev) => ({ ...prev, [postId]: originalInput }));
+      Alert.alert('Error', getReadableError(error) || 'Failed to add comment');
     }
   };
 
@@ -591,27 +632,34 @@ const HomeFeedScreen = ({ navigation }) => {
                         </View>
                       </View>
                     );
-                  }) : (
+                  }                  ) : (
                     <Text style={styles.noCommentsText}>No comments yet</Text>
                   )}
-                  <View style={styles.miniCommentInput}>
-                    <TextInput
-                      style={styles.inputStyle}
-                      placeholder="Add a comment..."
-                      value={commentInputs[post.id] || ''}
-                      onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [post.id]: text }))}
-                      onSubmitEditing={() => handleAddComment(post.id)}
-                    />
-                    {commentInputs[post.id]?.trim() && (
-                      <TouchableOpacity onPress={() => handleAddComment(post.id)} style={styles.commentPostButton}>
-                        <Text style={styles.commentPostText}>Post</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
                 </View>
               )}
             </View>
           )}
+
+          {/* Always-visible comment input - below comments section or caption if no comments */}
+          <View style={styles.commentInputContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment..."
+              value={commentInputs[post.id] || ''}
+              onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [post.id]: text }))}
+              onSubmitEditing={() => handleAddComment(post.id)}
+              multiline={false}
+            />
+            {commentInputs[post.id]?.trim() && (
+              <TouchableOpacity 
+                onPress={() => handleAddComment(post.id)} 
+                style={styles.commentPostButton}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.commentPostText}>Post</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -970,6 +1018,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#3b82f6',
     fontWeight: '600',
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: '#efefef',
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+    minHeight: 20,
   },
   videoIndicator: {
     position: 'absolute',

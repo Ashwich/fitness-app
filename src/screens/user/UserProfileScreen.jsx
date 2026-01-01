@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import { getUserPosts } from '../../api/services/postService';
 import { getFollowStats, toggleFollow, checkFollowStatus } from '../../api/services/followService';
 import { pickProfilePhoto, requestPermissions } from '../../services/profilePhotoService';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadProfilePhoto } from '../../api/services/uploadService';
+import { uploadProfilePhoto, uploadCoverPhoto } from '../../api/services/uploadService';
 import { getReadableError } from '../../utils/apiError';
 import { ENV } from '../../config/env';
 
@@ -44,6 +44,7 @@ const UserProfileScreen = ({ navigation, route }) => {
   const [posts, setPosts] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [bannerImage, setBannerImage] = useState(null);
+  const bannerImageRef = useRef(null); // Ref to preserve banner image across reloads
 
   useEffect(() => {
     loadProfile();
@@ -69,12 +70,46 @@ const UserProfileScreen = ({ navigation, route }) => {
           if (userData) {
             // User data includes profile if it exists, otherwise profile is null
             const profileData = userData.profile || {};
-            setProfile({ ...userData, ...profileData });
+            
+            // Merge user data with profile data for easier access
+            const mergedProfile = { ...userData, ...profileData };
+            setProfile(mergedProfile);
             setBio(profileData.bio || '');
             setProfession(profileData.profession || '');
             setProfilePhoto(profileData.avatarUrl || null);
-            setBannerImage(profileData.bannerUrl || profileData.bannerImage || null);
-            setBannerImage(profileData.bannerUrl || profileData.bannerImage || null);
+            
+            // Get bannerUrl from profile data, or from top-level userData (in case it was just updated)
+            // Also preserve existing bannerImage state if profile doesn't have it yet (database migration pending)
+            // This ensures the image stays visible even if the database doesn't have the field yet
+            const bannerUrl = profileData.bannerUrl || 
+                             profileData.bannerImage || 
+                             userData.bannerUrl || 
+                             null; // Don't preserve from state here - we want fresh data from backend
+            
+            // Only update bannerImage if we got a value from backend, otherwise keep existing state
+            // This prevents clearing the image if backend doesn't have the field yet (migration pending)
+            if (bannerUrl) {
+              setBannerImage(bannerUrl);
+              bannerImageRef.current = bannerUrl; // Update ref
+            } else if (bannerImageRef.current && !bannerUrl) {
+              // Keep existing bannerImage from ref if backend doesn't return one (migration not run yet)
+              console.log('[UserProfile] Backend returned null bannerUrl, preserving from ref:', bannerImageRef.current);
+              setBannerImage(bannerImageRef.current);
+            } else {
+              // Only clear if we don't have a preserved value
+              setBannerImage(null);
+              bannerImageRef.current = null;
+            }
+            
+            if (__DEV__) {
+              console.log('[UserProfile] Loaded profile data:', {
+                profileDataBannerUrl: profileData.bannerUrl,
+                profileDataBannerImage: profileData.bannerImage,
+                userDataBannerUrl: userData.bannerUrl,
+                existingBannerImage: bannerImage,
+                finalBannerUrl: bannerUrl || bannerImage,
+              });
+            }
           } else {
             // Fallback to user data from auth context
             setProfile(user || {});
@@ -254,15 +289,39 @@ const UserProfileScreen = ({ navigation, route }) => {
         const photoUri = result.assets[0].uri;
         
         try {
-          // Upload banner image using the same upload service
-          const uploadResult = await uploadProfilePhoto(photoUri);
+          // Upload cover/banner image using the cover photo upload service
+          const uploadResult = await uploadCoverPhoto(photoUri);
           const uploadedUrl = uploadResult.url;
           
+          console.log('[UserProfile] Cover photo uploaded, URL:', uploadedUrl);
+          console.log('[UserProfile] Upload result:', JSON.stringify(uploadResult, null, 2));
+          
+          // Update profile with bannerUrl
+          const updateResult = await upsertProfile({ bannerUrl: uploadedUrl });
+          console.log('[UserProfile] Profile update result:', JSON.stringify(updateResult, null, 2));
+          console.log('[UserProfile] Profile updated with bannerUrl:', uploadedUrl);
+          
+          // Update local state immediately and preserve in ref
           setBannerImage(uploadedUrl);
-          Alert.alert('Success', 'Banner image uploaded successfully');
+          bannerImageRef.current = uploadedUrl; // Preserve in ref for reload
+          setProfile((prevProfile) => {
+            const updated = {
+              ...prevProfile,
+              bannerUrl: uploadedUrl,
+            };
+            console.log('[UserProfile] Updated local profile state:', updated);
+            return updated;
+          });
+          
+          // Don't reload profile immediately - the state is already updated
+          // The image should display immediately with the updated state
+          console.log('[UserProfile] Cover photo uploaded and state updated. Image should display now.');
+          
+          Alert.alert('Success', 'Cover photo uploaded successfully');
         } catch (error) {
-          console.error('Error uploading banner image:', error);
-          Alert.alert('Upload Failed', 'Failed to upload banner image.');
+          console.error('Error uploading cover photo:', error);
+          console.error('Error details:', JSON.stringify(error, null, 2));
+          Alert.alert('Upload Failed', `Failed to upload cover photo: ${error.message || 'Unknown error'}`);
         }
       }
     } catch (error) {
@@ -284,8 +343,28 @@ const UserProfileScreen = ({ navigation, route }) => {
   // Get banner image URL
   const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
   let bannerImageUrl = bannerImage || profile?.bannerUrl || profile?.bannerImage || null;
+  
+  // Log for debugging
+  if (__DEV__) {
+    console.log('[UserProfile] Banner image state:', {
+      bannerImage,
+      profileBannerUrl: profile?.bannerUrl,
+      profileBannerImage: profile?.bannerImage,
+      finalUrl: bannerImageUrl,
+    });
+  }
+  
+  // Ensure URL is absolute
   if (bannerImageUrl && !bannerImageUrl.startsWith('http')) {
-    bannerImageUrl = bannerImageUrl.startsWith('/') ? `${baseURL}${bannerImageUrl}` : `${baseURL}/${bannerImageUrl}`;
+    if (bannerImageUrl.startsWith('/')) {
+      bannerImageUrl = `${baseURL}${bannerImageUrl}`;
+    } else {
+      bannerImageUrl = `${baseURL}/${bannerImageUrl}`;
+    }
+  }
+  
+  if (__DEV__ && bannerImageUrl) {
+    console.log('[UserProfile] Final banner image URL:', bannerImageUrl);
   }
 
   // Format username with @
@@ -309,7 +388,19 @@ const UserProfileScreen = ({ navigation, route }) => {
         {/* Banner Image */}
         <View style={styles.bannerContainer}>
           {bannerImageUrl ? (
-            <Image source={{ uri: bannerImageUrl }} style={styles.bannerImage} resizeMode="cover" />
+            <Image 
+              source={{ uri: bannerImageUrl }} 
+              style={styles.bannerImage} 
+              resizeMode="cover"
+              onError={(error) => {
+                console.error('[UserProfile] ❌ Error loading banner image');
+                console.error('[UserProfile] Error:', error.nativeEvent?.error || error);
+                console.error('[UserProfile] Failed URL:', bannerImageUrl);
+              }}
+              onLoad={() => {
+                console.log('[UserProfile] ✅ Banner image loaded successfully');
+              }}
+            />
           ) : (
             <View style={styles.bannerPlaceholder}>
               <Ionicons name="image-outline" size={48} color="#9ca3af" />

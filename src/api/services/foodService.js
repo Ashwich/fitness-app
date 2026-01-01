@@ -20,28 +20,46 @@ export const searchFood = async (query) => {
     console.log('[FoodService] Searching for:', query);
 
     // First, search in our database
-    const dbResponse = await apiClient.get('/food/search', {
-      params: { query: query.trim() },
-    });
-
-    console.log('[FoodService] Database response:', dbResponse.status, dbResponse.data);
-
-    // Handle response structure - could be { success: true, data: [...] } or just [...]
     let dbFoods = [];
-    if (dbResponse.data) {
-      if (dbResponse.data.success && dbResponse.data.data) {
-        dbFoods = dbResponse.data.data;
-      } else if (Array.isArray(dbResponse.data)) {
-        dbFoods = dbResponse.data;
-      } else if (dbResponse.data.data && Array.isArray(dbResponse.data.data)) {
-        dbFoods = dbResponse.data.data;
-      }
-    }
+    try {
+      const dbResponse = await apiClient.get('/food/search', {
+        params: { query: query.trim() },
+      });
 
-    // If we found foods in database, return them
-    if (Array.isArray(dbFoods) && dbFoods.length > 0) {
-      console.log(`[FoodService] Found ${dbFoods.length} foods in database for: ${query}`);
-      return dbFoods;
+      console.log('[FoodService] Database response:', dbResponse.status, dbResponse.data);
+
+      // Handle response structure - could be { success: true, data: [...] } or just [...]
+      if (dbResponse.data) {
+        if (dbResponse.data.success && dbResponse.data.data) {
+          dbFoods = dbResponse.data.data;
+        } else if (Array.isArray(dbResponse.data)) {
+          dbFoods = dbResponse.data;
+        } else if (dbResponse.data.data && Array.isArray(dbResponse.data.data)) {
+          dbFoods = dbResponse.data.data;
+        }
+      }
+
+      // If we found foods in database, return them
+      if (Array.isArray(dbFoods) && dbFoods.length > 0) {
+        console.log(`[FoodService] ✅ Found ${dbFoods.length} foods in database for: ${query}`);
+        // Ensure all foods have required fields
+        return dbFoods.map(food => ({
+          ...food,
+          id: food.id || food.foodId,
+          foodId: food.foodId || food.id,
+          name: food.name || food.foodName,
+          foodName: food.foodName || food.name,
+          calories: food.calories || 0,
+          protein: food.protein || 0,
+          carbs: food.carbs || 0,
+          fat: food.fat || 0,
+        }));
+      } else {
+        console.log(`[FoodService] No foods found in database for: ${query}`);
+      }
+    } catch (dbError) {
+      // If database search fails, log but continue to external API
+      console.warn('[FoodService] Database search failed, will try external API:', dbError.message);
     }
 
     // If not found in database, search external API
@@ -66,12 +84,23 @@ export const searchFood = async (query) => {
 
     // External API results will be automatically saved to database by backend
     if (Array.isArray(externalFoods) && externalFoods.length > 0) {
-      console.log(`[FoodService] Found ${externalFoods.length} foods from external API for: ${query}`);
+      console.log(`[FoodService] ✅ Found ${externalFoods.length} foods from external API for: ${query}`);
+      // Ensure all foods have required fields
+      return externalFoods.map(food => ({
+        ...food,
+        id: food.id || food.foodId,
+        foodId: food.foodId || food.id,
+        name: food.name || food.foodName,
+        foodName: food.foodName || food.name,
+        calories: food.calories || 0,
+        protein: food.protein || 0,
+        carbs: food.carbs || 0,
+        fat: food.fat || 0,
+      }));
     } else {
       console.log(`[FoodService] No foods found from external API for: ${query}`);
+      return [];
     }
-
-    return externalFoods;
   } catch (error) {
     console.error('[FoodService] Error searching food:', error);
     console.error('[FoodService] Error response:', error.response?.data);
@@ -97,12 +126,32 @@ export const getFoodById = async (foodId) => {
 
 /**
  * Get nutrition data for a food item with specific amount
+ * If food data is provided, calculate directly without API call
  * @param {string} foodId - Food ID
  * @param {number} amount - Amount in grams
+ * @param {Object} foodData - Optional: Food data with nutrition per 100g (to avoid API call)
  * @returns {Promise<Object>} Nutrition data for the specified amount
  */
-export const getFoodNutrition = async (foodId, amount) => {
+export const getFoodNutrition = async (foodId, amount, foodData = null) => {
   try {
+    // If we have food data with nutrition info, calculate directly (no API call needed)
+    if (foodData && foodData.calories !== undefined) {
+      const ratio = amount / 100;
+      const nutrition = {
+        calories: (foodData.calories || 0) * ratio,
+        protein: (foodData.protein || 0) * ratio,
+        carbs: (foodData.carbs || 0) * ratio,
+        fat: (foodData.fat || 0) * ratio,
+        fiber: (foodData.fiber || 0) * ratio,
+        sugar: (foodData.sugar || 0) * ratio,
+        sodium: (foodData.sodium || 0) * ratio,
+      };
+      console.log('[FoodService] Calculated nutrition from food data (no API call):', nutrition);
+      return nutrition;
+    }
+
+    // Otherwise, fetch from API
+    console.log('[FoodService] Fetching nutrition from API for foodId:', foodId);
     const response = await apiClient.post('/food/nutrition', {
       foodId,
       amount, // Amount in grams
@@ -113,6 +162,7 @@ export const getFoodNutrition = async (foodId, amount) => {
     throw error;
   }
 };
+
 
 
 

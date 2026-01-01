@@ -152,3 +152,49 @@ export const uploadProfilePhoto = async (fileUri) => {
   }
 };
 
+export const uploadCoverPhoto = async (fileUri) => {
+  try {
+    // Create FormData
+    const formData = new FormData();
+    
+    // Get filename from URI
+    const filename = fileUri.split('/').pop() || 'cover.jpg';
+    
+    // Append file to FormData
+    formData.append('photo', {
+      uri: fileUri,
+      type: 'image/jpeg',
+      name: filename,
+    });
+
+    const response = await uploadClient.post('/cover', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const data = extractData(response);
+    
+    // Return full URL (base URL + file path)
+    const baseURL = getBaseURL();
+    // Ensure URL is absolute
+    let fullUrl = data.url;
+    if (!fullUrl.startsWith('http')) {
+      // If URL starts with /, use baseURL directly
+      if (fullUrl.startsWith('/')) {
+        fullUrl = `${baseURL}${fullUrl}`;
+      } else {
+        fullUrl = `${baseURL}/${fullUrl}`;
+      }
+    }
+    
+    return {
+      ...data,
+      url: fullUrl,
+    };
+  } catch (error) {
+    console.error('Error uploading cover photo:', error);
+    throw error;
+  }
+};
+

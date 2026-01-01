@@ -22,6 +22,7 @@ import {
   getStepsGoal,
   startStepTracking,
   stopStepTracking,
+  initializeHealthKit,
 } from '../../services/healthService';
 import { getDiaryEntry } from '../../api/services/diaryService';
 import {
@@ -125,7 +126,16 @@ const UserDashboardScreen = ({ navigation }) => {
     } else {
       loadProfile().finally(() => { if (isMounted) setLoading(false); });
     }
-    startStepTracking();
+    
+    // Initialize HealthKit/Google Fit first, then start step tracking
+    initializeHealthKit().then((initialized) => {
+      if (initialized) {
+        console.log('[UserDashboard] HealthKit/Google Fit initialized, using native step tracking');
+      } else {
+        console.log('[UserDashboard] HealthKit/Google Fit not available, using fallback step tracking');
+        startStepTracking();
+      }
+    });
     const interval = setInterval(async () => {
       const currentProfile = profileRef.current;
       if (currentProfile) {

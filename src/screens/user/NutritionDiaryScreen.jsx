@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,9 @@ const NutritionDiaryScreen = ({ navigation }) => {
   const [profile, setProfile] = useState(null);
   const [diaryEntry, setDiaryEntry] = useState(null);
   const [loading, setLoading] = useState(true);
+  const loadingTimeoutRef = useRef(null);
+  const hasLoadedRef = useRef(false); // Track if we've completed at least one load
+  const isLoadingRef = useRef(false); // Track if a load is currently in progress
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -49,7 +52,12 @@ const NutritionDiaryScreen = ({ navigation }) => {
   const [selectedFood, setSelectedFood] = useState(null);
   const [foodAmount, setFoodAmount] = useState('100'); // Default 100g
   const [stats, setStats] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  // Initialize selectedDate to today's date
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
 
   // Helper function to process diary entry (parse JSON strings, ensure arrays, etc.)
   const processDiaryEntry = useCallback((entry) => {
@@ -91,9 +99,31 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
   // Load profile and diary entry
   const loadData = useCallback(async (showLoading = true) => {
+    // Prevent multiple simultaneous calls
+    if (isLoadingRef.current) {
+      console.log('[NutritionDiary] Load already in progress, skipping duplicate call');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    
+    // Always ensure loading state is managed
+    // Clear any existing timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    
     try {
       if (showLoading) {
-      setLoading(true);
+        setLoading(true);
+        // Safety timeout - ensure loading is cleared after 10 seconds
+        loadingTimeoutRef.current = setTimeout(() => {
+          console.warn('[NutritionDiary] Loading timeout - clearing loading state');
+          setLoading(false);
+          loadingTimeoutRef.current = null;
+          isLoadingRef.current = false;
+        }, 10000);
       }
       
       // Check if user is authenticated before making requests
@@ -102,94 +132,191 @@ const NutritionDiaryScreen = ({ navigation }) => {
         if (showLoading) {
           setLoading(false);
         }
+        // Set diaryEntry to null to show empty state
+        if (!diaryEntry) {
+          setDiaryEntry(null);
+        }
         return;
       }
       
       // Load profile for nutrition goals
-      const profileData = await fetchProfile();
-      if (profileData?.calorieGoals && typeof profileData.calorieGoals === 'string') {
-        try {
-          profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
-        } catch (e) {
-          console.warn('Failed to parse calorieGoals:', e);
+      try {
+        const profileData = await fetchProfile();
+        if (profileData?.calorieGoals && typeof profileData.calorieGoals === 'string') {
+          try {
+            profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
+          } catch (e) {
+            console.warn('Failed to parse calorieGoals:', e);
+          }
         }
+        setProfile(profileData);
+      } catch (profileError) {
+        console.error('[NutritionDiary] Error loading profile:', profileError);
+        // Continue even if profile fails - we can still show diary
       }
-      setProfile(profileData);
 
       // Load diary entry for selected date
-      try {
-      const entry = await getDiaryEntry(selectedDate);
-      console.log('[NutritionDiary] Loaded diary entry:', entry);
+      // Use today's date if selectedDate is not set or is invalid
+      const dateToFetch = selectedDate || new Date().toISOString().split('T')[0];
+      console.log('[NutritionDiary] Fetching diary entry for date:', dateToFetch);
       
-        // Process the entry
-        const processedEntry = processDiaryEntry(entry);
-        
-        // Only update state if we got valid data, or if this is an initial load (showLoading=true)
-        // This prevents overwriting valid data with null when refreshing after adding food
-        if (processedEntry || showLoading) {
-          if (processedEntry) {
-        console.log('[NutritionDiary] Parsed diary entry:', {
-              breakfast: processedEntry.breakfast?.length || 0,
-              brunch: processedEntry.brunch?.length || 0,
-              dinner: processedEntry.dinner?.length || 0,
-              snacks: processedEntry.snacks?.length || 0,
-              totalCalories: processedEntry.totalCalories,
-              totalProtein: processedEntry.totalProtein,
-              totalCarbs: processedEntry.totalCarbs,
-              totalFat: processedEntry.totalFat,
-        });
-      }
-          setDiaryEntry(processedEntry);
-        } else {
-          // If we got null and this is a refresh (not initial load), keep existing data
-          console.log('[NutritionDiary] Got null entry on refresh, preserving existing state');
-        }
+      // getDiaryEntry handles 404s internally and returns null, so no try-catch needed here
+      // But we'll wrap it to be safe
+      let entry = null;
+      try {
+        entry = await getDiaryEntry(dateToFetch);
+        console.log('[NutritionDiary] Loaded diary entry:', entry ? 'Found' : 'Not found (normal if no food added)');
       } catch (diaryError) {
-        // If it's a "User not found" error, don't clear existing data
-        if (diaryError.message?.includes('User authentication failed')) {
-          console.error('[NutritionDiary] Authentication error, preserving existing data');
-          console.error('[NutritionDiary] This might be a backend issue - POST /diary/meal works but GET /diary fails');
-          // Don't update diaryEntry - keep existing data
-          // For refresh calls (showLoading=false), silently ignore the error
-          // For initial loads (showLoading=true), we'll show a warning but not break the UI
-          if (showLoading) {
-            // Log the error but don't throw - allow the UI to continue with existing data
-            console.warn('[NutritionDiary] Initial load failed with auth error, but continuing with existing state');
-            // Set diaryEntry to null only if we don't have existing data
-            // This allows the UI to show "no data" state on first load
-            if (!diaryEntry) {
-              setDiaryEntry(null);
-            }
-          }
-          // Don't re-throw - preserve existing data and continue
+        // getDiaryEntry should never throw for 404s, but handle other errors
+        console.error('[NutritionDiary] Unexpected error from getDiaryEntry:', diaryError);
+        // Don't throw - set entry to null and continue
+        entry = null;
+      }
+      
+      // Process the entry
+      const processedEntry = entry ? processDiaryEntry(entry) : null;
+      
+      // Always update if we got valid data
+      if (processedEntry) {
+        console.log('[NutritionDiary] Parsed diary entry:', {
+          breakfast: processedEntry.breakfast?.length || 0,
+          brunch: processedEntry.brunch?.length || 0,
+          dinner: processedEntry.dinner?.length || 0,
+          snacks: processedEntry.snacks?.length || 0,
+          totalCalories: processedEntry.totalCalories,
+          totalProtein: processedEntry.totalProtein,
+          totalCarbs: processedEntry.totalCarbs,
+          totalFat: processedEntry.totalFat,
+        });
+        setDiaryEntry(processedEntry);
+      } else {
+        // If we got null/404, only update state if:
+        // 1. This is an initial load (showLoading=true) AND we don't have existing data
+        // 2. OR if we have existing data but it's for a different date
+        const currentDate = diaryEntry?.date || selectedDate;
+        if (showLoading && !diaryEntry) {
+          // Initial load with no existing data - set to null to show empty state
+          console.log('[NutritionDiary] Initial load: no diary entry found, setting to null (will show empty state)');
+          setDiaryEntry(null);
+        } else if (currentDate !== dateToFetch) {
+          // Different date requested - update to null for new date
+          console.log('[NutritionDiary] Different date requested, clearing existing data');
+          setDiaryEntry(null);
         } else {
-          // For other errors, re-throw to be handled by outer catch
-          throw diaryError;
+          // Same date, refresh call - preserve existing data
+          console.log('[NutritionDiary] Got null entry on refresh for same date, preserving existing state');
+          // Don't update diaryEntry - keep existing data
         }
       }
 
       // Load stats (only if showLoading is true to avoid unnecessary calls)
       if (showLoading) {
-      const statsData = await getDiaryStats(30);
-      setStats(statsData);
+        try {
+          const statsData = await getDiaryStats(30);
+          setStats(statsData);
+        } catch (statsError) {
+          console.error('[NutritionDiary] Error loading stats:', statsError);
+          // Don't block UI if stats fail
+        }
       }
     } catch (error) {
       console.error('[NutritionDiary] Error loading diary data:', error);
       // Don't show alert for 404 (no entry for date) or auth errors (already handled)
-      if (error.response?.status !== 404 && !error.message?.includes('User authentication failed')) {
+      // Also handle "User not found" errors from backend (which are actually 404s for diary)
+      const is404 = error.response?.status === 404;
+      const isUserNotFound = error.response?.data?.error?.includes('User not found') || 
+                            error.response?.data?.error?.includes('Diary entry not found');
+      
+      if (!is404 && !isUserNotFound && !error.message?.includes('User authentication failed')) {
+        // Only show alert for real errors, not expected 404s
         Alert.alert('Error', getReadableError(error));
       }
-    } finally {
+      
+      // Ensure loading state is cleared even on error
+      // Always set diaryEntry to null on initial load if we get an error (to show empty state)
       if (showLoading) {
-      setLoading(false);
+        if (!diaryEntry) {
+          setDiaryEntry(null);
+        }
+        setLoading(false);
+      }
+    } finally {
+      // Always clear loading state after first load completes
+      // This ensures the screen doesn't get stuck in loading state
+      if (!hasLoadedRef.current) {
+        // First load - always clear loading
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
+        setLoading(false);
+        hasLoadedRef.current = true; // Mark that we've completed at least one load
+      } else if (showLoading) {
+        // Subsequent loads with showLoading=true - clear loading
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
+        setLoading(false);
+      } else {
+        // Subsequent loads with showLoading=false - just clear timeout, don't change loading state
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
+      }
+      
+      // Always clear the loading flag
+      isLoadingRef.current = false;
     }
+  }, [selectedDate, processDiaryEntry, user]); // Removed diaryEntry from dependencies to prevent infinite loop
+  
+  // Set initial date on mount
+  useEffect(() => {
+    const today = getTodayDate();
+    if (!selectedDate || selectedDate !== today) {
+      setSelectedDate(today);
     }
-  }, [selectedDate, processDiaryEntry, user]);
+  }, []); // Only run once on mount
+
+  // Initial load after date is set
+  useEffect(() => {
+    // Only run initial load once, when selectedDate is set and we haven't loaded yet
+    if (!hasLoadedRef.current && selectedDate && !isLoadingRef.current) {
+      console.log('[NutritionDiary] Component mounted, loading initial data');
+      loadData(true);
+    }
+  }, [selectedDate, loadData]); // Run when selectedDate is set
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      // Reload data when screen comes into focus to ensure we have latest data
+      // This ensures data persists when user leaves and comes back
+      // Use false to preserve existing data if API call fails
+      console.log('[NutritionDiary] Screen focused, reloading data');
+      
+      // Only reload if we've already completed the initial load
+      // This prevents duplicate calls on first focus (initial load is handled by useEffect)
+      if (hasLoadedRef.current && !isLoadingRef.current) {
+        // Ensure selectedDate is set to today if not set
+        const today = getTodayDate();
+        if (!selectedDate || selectedDate !== today) {
+          setSelectedDate(today);
+          // If date changed, wait for it to update before loading
+          return;
+        }
+        loadData(false); // Don't show loading spinner on focus (preserves existing data better)
+      }
+    }, [loadData, selectedDate]) // Removed diaryEntry and loading from dependencies
   );
 
   // Search for food
@@ -261,27 +388,19 @@ const NutritionDiaryScreen = ({ navigation }) => {
         foodId: selectedFood.foodId,
         name: selectedFood.name || selectedFood.foodName,
         calories: selectedFood.calories,
+        protein: selectedFood.protein,
+        carbs: selectedFood.carbs,
+        fat: selectedFood.fat,
       });
 
       // Calculate nutrition for the amount
+      // Since we already have food data from search (either from database or external API),
+      // we can calculate directly without making another API call
       let nutrition;
-      if (foodId && foodId !== 'unknown') {
-        try {
-          console.log('[NutritionDiary] Fetching nutrition from API for foodId:', foodId);
-          nutrition = await getFoodNutrition(foodId, amount);
-          console.log('[NutritionDiary] Nutrition from API:', nutrition);
-        } catch (nutritionError) {
-          console.warn('[NutritionDiary] Could not get nutrition from API, calculating from food data:', nutritionError);
-          console.warn('[NutritionDiary] Error details:', nutritionError.response?.data || nutritionError.message);
-          // Fallback: calculate from food data (per 100g)
-          nutrition = null; // Will use fallback below
-        }
-      } else {
-        console.warn('[NutritionDiary] No valid food ID, using food data directly');
-      }
-
-      // If API call failed or no ID, calculate from food data (per 100g)
-      if (!nutrition) {
+      
+      // Check if we have complete nutrition data in the selected food
+      if (selectedFood.calories !== undefined && selectedFood.calories !== null) {
+        // Use food data directly (from database or external API) - no additional API call needed
         const ratio = amount / 100;
         nutrition = {
           calories: (selectedFood.calories || 0) * ratio,
@@ -292,7 +411,40 @@ const NutritionDiaryScreen = ({ navigation }) => {
           sugar: (selectedFood.sugar || 0) * ratio,
           sodium: (selectedFood.sodium || 0) * ratio,
         };
-        console.log('[NutritionDiary] Calculated nutrition from food data:', nutrition);
+        console.log('[NutritionDiary] Calculated nutrition from food data (no API call):', nutrition);
+      } else if (foodId && foodId !== 'unknown') {
+        // Fallback: if we don't have nutrition data, try API (shouldn't happen if backend works correctly)
+        try {
+          console.log('[NutritionDiary] Food data incomplete, fetching nutrition from API for foodId:', foodId);
+          nutrition = await getFoodNutrition(foodId, amount, selectedFood);
+          console.log('[NutritionDiary] Nutrition from API:', nutrition);
+        } catch (nutritionError) {
+          console.warn('[NutritionDiary] Could not get nutrition from API, using defaults:', nutritionError);
+          // Last resort: use defaults
+          const ratio = amount / 100;
+          nutrition = {
+            calories: (selectedFood.calories || 0) * ratio,
+            protein: (selectedFood.protein || 0) * ratio,
+            carbs: (selectedFood.carbs || 0) * ratio,
+            fat: (selectedFood.fat || 0) * ratio,
+            fiber: (selectedFood.fiber || 0) * ratio,
+            sugar: (selectedFood.sugar || 0) * ratio,
+            sodium: (selectedFood.sodium || 0) * ratio,
+          };
+        }
+      } else {
+        // No food ID and no nutrition data - use defaults
+        console.warn('[NutritionDiary] No valid food ID or nutrition data, using defaults');
+        const ratio = amount / 100;
+        nutrition = {
+          calories: (selectedFood.calories || 0) * ratio,
+          protein: (selectedFood.protein || 0) * ratio,
+          carbs: (selectedFood.carbs || 0) * ratio,
+          fat: (selectedFood.fat || 0) * ratio,
+          fiber: (selectedFood.fiber || 0) * ratio,
+          sugar: (selectedFood.sugar || 0) * ratio,
+          sodium: (selectedFood.sodium || 0) * ratio,
+        };
       }
       
       const foodItem = {
@@ -317,13 +469,22 @@ const NutritionDiaryScreen = ({ navigation }) => {
       if (updatedEntry) {
         const processedEntry = processDiaryEntry(updatedEntry);
         console.log('[NutritionDiary] Processed updated entry:', processedEntry);
+        console.log('[NutritionDiary] Entry meals after processing:', {
+          breakfast: Array.isArray(processedEntry.breakfast) ? processedEntry.breakfast.length : 0,
+          brunch: Array.isArray(processedEntry.brunch) ? processedEntry.brunch.length : 0,
+          dinner: Array.isArray(processedEntry.dinner) ? processedEntry.dinner.length : 0,
+          snacks: Array.isArray(processedEntry.snacks) ? processedEntry.snacks.length : 0,
+        });
         setDiaryEntry(processedEntry);
         // Don't call loadData() here - the updatedEntry from the API is the source of truth
         // Calling loadData() can cause a 404 error that overwrites our valid data
       } else {
         // If no entry returned, reload from server as fallback
         console.warn('[NutritionDiary] No updated entry returned, reloading from server');
-        await loadData(false); // Don't show loading state
+        // Wait a bit for backend to process, then reload
+        setTimeout(async () => {
+          await loadData(false); // Don't show loading state
+        }, 500);
       }
       
       // Show success message
@@ -417,8 +578,15 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
   // Calculate daily totals
   const calculateDailyTotal = () => {
+    // Always return a valid object, even if diaryEntry is null
+    const defaultTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    
+    if (!diaryEntry) {
+      return defaultTotals;
+    }
+    
     // Always try to use backend-calculated totals first (most reliable)
-    if (diaryEntry && diaryEntry.totalCalories !== undefined && diaryEntry.totalCalories !== null) {
+    if (diaryEntry.totalCalories !== undefined && diaryEntry.totalCalories !== null) {
       const backendTotals = {
         calories: parseFloat(diaryEntry.totalCalories) || 0,
         protein: parseFloat(diaryEntry.totalProtein) || 0,
@@ -454,8 +622,14 @@ const NutritionDiaryScreen = ({ navigation }) => {
     return Math.min(100, Math.round((current / goal) * 100));
   };
 
+  // Safely calculate daily total - ensure diaryEntry is handled
   const dailyTotal = calculateDailyTotal();
   const goals = profile?.calorieGoals || {};
+  
+  // Ensure we have valid values
+  if (!dailyTotal || typeof dailyTotal !== 'object') {
+    console.warn('[NutritionDiary] Invalid dailyTotal, using defaults');
+  }
   
   // Log for debugging
   console.log('[NutritionDiary] === Daily Progress Calculation ===');
@@ -558,6 +732,17 @@ const NutritionDiaryScreen = ({ navigation }) => {
     );
   };
 
+  // Calculate macronutrient percentages based on goals (not total macros)
+  const carbsGoalPercentage = goals?.carbs && goals.carbs > 0 
+    ? Math.min(100, Math.round(((dailyTotal?.carbs || 0) / goals.carbs) * 100)) 
+    : 0;
+  const proteinGoalPercentage = goals?.protein && goals.protein > 0 
+    ? Math.min(100, Math.round(((dailyTotal?.protein || 0) / goals.protein) * 100)) 
+    : 0;
+  const fatGoalPercentage = goals?.fat && goals.fat > 0 
+    ? Math.min(100, Math.round(((dailyTotal?.fat || 0) / goals.fat) * 100)) 
+    : 0;
+
   if (loading) {
     return (
       <ScreenContainer>
@@ -568,17 +753,6 @@ const NutritionDiaryScreen = ({ navigation }) => {
       </ScreenContainer>
     );
   }
-
-  // Calculate macronutrient percentages based on goals (not total macros)
-  const carbsGoalPercentage = goals.carbs && goals.carbs > 0 
-    ? Math.min(100, Math.round(((dailyTotal.carbs || 0) / goals.carbs) * 100)) 
-    : 0;
-  const proteinGoalPercentage = goals.protein && goals.protein > 0 
-    ? Math.min(100, Math.round(((dailyTotal.protein || 0) / goals.protein) * 100)) 
-    : 0;
-  const fatGoalPercentage = goals.fat && goals.fat > 0 
-    ? Math.min(100, Math.round(((dailyTotal.fat || 0) / goals.fat) * 100)) 
-    : 0;
 
   // Calculate circular progress for calories
   const caloriesProgressAngle = Math.min(360, (caloriesProgress / 100) * 360);

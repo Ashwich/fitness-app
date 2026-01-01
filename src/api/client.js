@@ -2,9 +2,9 @@ import axios from 'axios';
 import { ENV } from '../config/env';
 import { getToken } from '../storage/tokenStorage';
 
-let authToken: string | null = null;
+let authToken = null;
 
-export const setAuthToken = (token: string | null) => {
+export const setAuthToken = (token) => {
   authToken = token;
 };
 
@@ -111,16 +111,28 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (__DEV__) {
-      console.error('[API Error]', {
-        url: error.config?.url,
-        method: error.config?.method,
-        baseURL: error.config?.baseURL,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-        code: error.code,
-      });
+      // Don't log 404s as errors for diary endpoints (expected when no entry exists)
+      const isDiary404 = error.config?.url?.includes('/diary') && error.response?.status === 404;
+      const isExpected404 = isDiary404 && (
+        error.response?.data?.error?.includes('Diary entry not found') ||
+        error.response?.data?.error?.includes('User not found')
+      );
+      
+      if (isExpected404) {
+        // Log as info, not error, since this is expected behavior
+        console.log('[API Info] Diary entry not found (404) - this is normal if no food has been added yet');
+      } else {
+        console.error('[API Error]', {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+          code: error.code,
+        });
+      }
     }
     return Promise.reject(error);
   }

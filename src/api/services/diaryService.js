@@ -34,8 +34,17 @@ export const getDiaryEntry = async (date = null) => {
     // If 404, treat it as "no diary entry found" (normal case)
     // The backend sometimes returns "User not found" for 404s even when user is authenticated
     // Since other endpoints work (profile, diary/stats), we know user is authenticated
-    if (error.response?.status === 404) {
-      console.log('[DiaryService] No diary entry found for date (404) - this is normal if no food has been added yet');
+    const is404 = error.response?.status === 404;
+    const errorMessage = error.response?.data?.error || error.message || '';
+    const isUserNotFoundError = errorMessage.includes('User not found') || 
+                                errorMessage.includes('Diary entry not found');
+    
+    if (is404 || isUserNotFoundError) {
+      console.log('[DiaryService] No diary entry found for date (404/User not found) - this is normal if no food has been added yet');
+      console.log('[DiaryService] Error details:', {
+        status: error.response?.status,
+        error: errorMessage,
+      });
       return null;
     }
     // For other errors, check if it's a real authentication issue

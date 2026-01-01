@@ -6,20 +6,9 @@ import { View } from 'react-native';
 import { AppLoader } from '../components/AppLoader';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import HomeScreen from '../screens/home/HomeScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
 import HomeFeedScreen from '../screens/user/HomeFeedScreen';
 import UserProfileScreen from '../screens/user/UserProfileScreen';
 import HomepageScreen from '../screens/landing/HomepageScreen';
-import GymSignupScreen from '../screens/auth/GymSignupScreen';
-import SuperAdminLoginScreen from '../screens/auth/SuperAdminLoginScreen';
-import GymAdminLoginScreen from '../screens/auth/GymAdminLoginScreen';
-import StaffLoginScreen from '../screens/auth/StaffLoginScreen';
-import UserPortalLoginScreen from '../screens/auth/UserPortalLoginScreen';
-import GymSuperAdminDashboardScreen from '../screens/admin/GymSuperAdminDashboardScreen';
-import SuperAdminDashboardScreen from '../screens/admin/SuperAdminDashboardScreen';
-import GymAdminDashboardScreen from '../screens/admin/GymAdminDashboardScreen';
-import StaffDashboardScreen from '../screens/staff/StaffDashboardScreen';
 import UserDashboardScreen from '../screens/user/UserDashboardScreen';
 import PersonalInfoScreen from '../screens/user/PersonalInfoScreen';
 import PhysicalInfoScreen from '../screens/user/PhysicalInfoScreen';
@@ -59,15 +48,6 @@ const AuthNavigator = () => (
     <AuthStack.Screen name="Homepage" component={HomepageScreen} options={{ title: 'Welcome' }} />
     <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: `${ENV.APP_NAME} Login` }} />
     <AuthStack.Screen name="Register" component={RegisterScreen} options={{ title: 'Create account' }} />
-    <AuthStack.Screen name="GymSignup" component={GymSignupScreen} options={{ title: 'Gym signup' }} />
-    <AuthStack.Screen name="SuperAdminLogin" component={SuperAdminLoginScreen} options={{ title: 'Super admin' }} />
-    <AuthStack.Screen name="GymAdminLogin" component={GymAdminLoginScreen} options={{ title: 'Gym admin login' }} />
-    <AuthStack.Screen name="StaffLogin" component={StaffLoginScreen} options={{ title: 'Staff login' }} />
-    <AuthStack.Screen name="UserPortalLogin" component={UserPortalLoginScreen} options={{ title: 'User portal login' }} />
-    <AuthStack.Screen name="GymSuperAdminDashboard" component={GymSuperAdminDashboardScreen} options={{ title: 'Gym Super Admin' }} />
-    <AuthStack.Screen name="SuperAdminDashboard" component={SuperAdminDashboardScreen} options={{ title: 'Super Admin' }} />
-    <AuthStack.Screen name="GymAdminDashboard" component={GymAdminDashboardScreen} options={{ title: 'Gym Admin' }} />
-    <AuthStack.Screen name="StaffDashboard" component={StaffDashboardScreen} options={{ title: 'Staff Dashboard' }} />
     <AuthStack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ title: 'User Dashboard' }} />
   </AuthStack.Navigator>
 );
