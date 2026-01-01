@@ -20,7 +20,9 @@ import { upsertProfile } from '../../api/services/profileService';
 import { getUserById } from '../../api/services/userProfileService';
 import { getUserPosts } from '../../api/services/postService';
 import { getFollowStats, toggleFollow, checkFollowStatus } from '../../api/services/followService';
-import { pickProfilePhoto } from '../../services/profilePhotoService';
+import { pickProfilePhoto, requestPermissions } from '../../services/profilePhotoService';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadProfilePhoto } from '../../api/services/uploadService';
 import { getReadableError } from '../../utils/apiError';
 import { ENV } from '../../config/env';
 
@@ -41,6 +43,7 @@ const UserProfileScreen = ({ navigation, route }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [posts, setPosts] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [bannerImage, setBannerImage] = useState(null);
 
   useEffect(() => {
     loadProfile();
@@ -70,12 +73,15 @@ const UserProfileScreen = ({ navigation, route }) => {
             setBio(profileData.bio || '');
             setProfession(profileData.profession || '');
             setProfilePhoto(profileData.avatarUrl || null);
+            setBannerImage(profileData.bannerUrl || profileData.bannerImage || null);
+            setBannerImage(profileData.bannerUrl || profileData.bannerImage || null);
           } else {
             // Fallback to user data from auth context
             setProfile(user || {});
             setBio('');
             setProfession('');
             setProfilePhoto(null);
+            setBannerImage(null);
           }
         } catch (userError) {
           // If getUserById fails, use user data from auth context
@@ -181,13 +187,22 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   const handleSave = async () => {
     try {
-      await upsertProfile({
+      const updateData = {
         bio,
         profession,
-      });
-      setProfile({ ...profile, bio, profession });
+      };
+      
+      // Include banner image if it was updated
+      if (bannerImage) {
+        updateData.bannerUrl = bannerImage;
+      }
+      
+      await upsertProfile(updateData);
+      setProfile({ ...profile, bio, profession, bannerUrl: bannerImage || profile?.bannerUrl });
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully');
+      // Reload profile to get updated data
+      loadProfile();
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile');
     }
@@ -197,6 +212,7 @@ const UserProfileScreen = ({ navigation, route }) => {
     setIsEditing(false);
     setBio(profile?.bio || '');
     setProfession(profile?.profession || '');
+    setBannerImage(profile?.bannerUrl || profile?.bannerImage || null);
   };
 
   const handleFollow = async () => {
@@ -219,6 +235,41 @@ const UserProfileScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleUploadBanner = async () => {
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
+
+      // Fix deprecated MediaTypeOptions
+      const MediaType = ImagePicker.MediaType || ImagePicker.MediaTypeOptions;
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: MediaType.Images,
+        allowsEditing: true,
+        aspect: [16, 9], // Banner aspect ratio
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const photoUri = result.assets[0].uri;
+        
+        try {
+          // Upload banner image using the same upload service
+          const uploadResult = await uploadProfilePhoto(photoUri);
+          const uploadedUrl = uploadResult.url;
+          
+          setBannerImage(uploadedUrl);
+          Alert.alert('Success', 'Banner image uploaded successfully');
+        } catch (error) {
+          console.error('Error uploading banner image:', error);
+          Alert.alert('Upload Failed', 'Failed to upload banner image.');
+        }
+      }
+    } catch (error) {
+      console.error('Error picking banner image:', error);
+    }
+  };
+
   if (loading) {
     return (
       <ScreenContainer>
@@ -232,7 +283,7 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   // Get banner image URL
   const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
-  let bannerImageUrl = profile?.bannerUrl || profile?.bannerImage || null;
+  let bannerImageUrl = bannerImage || profile?.bannerUrl || profile?.bannerImage || null;
   if (bannerImageUrl && !bannerImageUrl.startsWith('http')) {
     bannerImageUrl = bannerImageUrl.startsWith('/') ? `${baseURL}${bannerImageUrl}` : `${baseURL}/${bannerImageUrl}`;
   }
@@ -263,6 +314,17 @@ const UserProfileScreen = ({ navigation, route }) => {
             <View style={styles.bannerPlaceholder}>
               <Ionicons name="image-outline" size={48} color="#9ca3af" />
             </View>
+          )}
+          
+          {/* Banner Edit Button */}
+          {isOwnProfile && isEditing && (
+            <TouchableOpacity
+              style={styles.bannerEditButton}
+              onPress={handleUploadBanner}
+            >
+              <Ionicons name="camera" size={20} color="#ffffff" />
+              <Text style={styles.bannerEditButtonText}>Change Cover</Text>
+            </TouchableOpacity>
           )}
           
           {/* Profile Picture Overlay */}
@@ -322,12 +384,12 @@ const UserProfileScreen = ({ navigation, route }) => {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.messageButton}
+                style={styles.addPostButton}
                 onPress={() => {
-                  navigation.navigate('MessagesScreen');
+                  navigation.navigate('CreatePostScreen');
                 }}
               >
-                <Ionicons name="chatbubble-outline" size={20} color="#ffffff" />
+                <Ionicons name="add" size={24} color="#ffffff" />
               </TouchableOpacity>
             </>
           ) : (
@@ -633,6 +695,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#9333ea',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  addPostButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#9333ea',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerEditButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  bannerEditButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Bio Section
   bioSection: {

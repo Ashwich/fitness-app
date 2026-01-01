@@ -5,9 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { fetchProfile } from '../../api/services/profileService';
@@ -33,27 +34,27 @@ const ProfileSettingsScreen = ({ navigation }) => {
     {
       id: 'profile',
       title: 'Personal Profile',
-      description: 'Edit your personal information',
-      icon: 'person-outline',
-      color: '#2563eb',
+      description: 'Name, email, and social info',
+      icon: 'person',
+      color: '#6366f1', // Indigo
       screen: 'PersonalInfoScreen',
       params: { profile, isEditing: true },
     },
     {
       id: 'physical',
       title: 'Physical Stats',
-      description: 'Update weight, height, and BMI',
-      icon: 'body-outline',
-      color: '#10b981',
+      description: 'Weight, height, and BMI',
+      icon: 'fitness',
+      color: '#10b981', // Emerald
       screen: 'PhysicalInfoScreen',
       params: { profile, isEditing: true },
     },
     {
       id: 'fitness',
       title: 'Fitness Goals',
-      description: 'Set your fitness and activity goals',
-      icon: 'trophy-outline',
-      color: '#f59e0b',
+      description: 'Activity levels and targets',
+      icon: 'trophy',
+      color: '#f59e0b', // Amber
       screen: 'FitnessGoalsScreen',
       params: {
         userProfile: profile,
@@ -75,9 +76,9 @@ const ProfileSettingsScreen = ({ navigation }) => {
     {
       id: 'nutrition',
       title: 'Nutrition Goals',
-      description: 'Set daily calorie and macro targets',
-      icon: 'nutrition-outline',
-      color: '#ef4444',
+      description: 'Daily calories and macros',
+      icon: 'restaurant',
+      color: '#ef4444', // Rose
       screen: 'CalorieGoalsScreen',
       params: {
         userProfile: profile,
@@ -102,146 +103,189 @@ const ProfileSettingsScreen = ({ navigation }) => {
     {
       id: 'water',
       title: 'Water Intake',
-      description: 'Set water goal and track intake',
-      icon: 'water-outline',
-      color: '#3b82f6',
+      description: 'Hydration targets',
+      icon: 'water',
+      color: '#3b82f6', // Blue
       screen: 'WaterIntakeScreen',
       params: {},
     },
     {
       id: 'steps',
       title: 'Steps Goal',
-      description: 'Set daily step goal and track progress',
-      icon: 'footsteps-outline',
-      color: '#8b5cf6',
+      description: 'Daily movement targets',
+      icon: 'walk',
+      color: '#8b5cf6', // Violet
       screen: 'StepsGoalScreen',
       params: {},
     },
   ];
 
-  const handleNavigate = (option) => {
-    if (option.screen) {
-      navigation.navigate(option.screen, option.params || {});
-    }
-  };
-
   return (
-    <ScreenContainer>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={28} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>Account Settings</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Manage Your Metrics</Text>
-          <Text style={styles.sectionSubtitle}>
-            Customize all your fitness and health goals
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.introSection}>
+          <Text style={styles.mainTitle}>My Metrics</Text>
+          <Text style={styles.subTitle}>
+            Fine-tune your health data to get the most accurate insights.
           </Text>
         </View>
 
-        {settingsOptions.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            style={styles.optionCard}
-            onPress={() => handleNavigate(option)}
-          >
-            <View style={[styles.optionIcon, { backgroundColor: `${option.color}15` }]}>
-              <Ionicons name={option.icon} size={24} color={option.color} />
-            </View>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>{option.title}</Text>
-              <Text style={styles.optionDescription}>{option.description}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.optionsGrid}>
+          {settingsOptions.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={styles.card}
+              onPress={() => navigation.navigate(option.screen, option.params || {})}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: `${option.color}15` }]}>
+                <Ionicons name={option.icon} size={26} color={option.color} />
+              </View>
+              
+              <View style={styles.textContainer}>
+                <Text style={styles.cardTitle}>{option.title}</Text>
+                <Text style={styles.cardDesc} numberOfLines={1}>
+                  {option.description}
+                </Text>
+              </View>
+
+              <View style={styles.arrowContainer}>
+                <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Support Section */}
+        <View style={styles.footerInfo}>
+          <MaterialCommunityIcons name="shield-check-outline" size={16} color="#94a3b8" />
+          <Text style={styles.footerText}>Your data is encrypted and secure</Text>
+        </View>
       </ScrollView>
-    </ScreenContainer>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1e293b',
   },
   placeholder: {
-    width: 40,
+    width: 32,
   },
-  content: {
+  container: {
     flex: 1,
-    padding: 16,
   },
-  section: {
-    marginBottom: 24,
+  scrollContent: {
+    paddingBottom: 40,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
+  introSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1e293b',
+    letterSpacing: -0.5,
   },
-  optionCard: {
+  subTitle: {
+    fontSize: 15,
+    color: '#64748b',
+    marginTop: 6,
+    lineHeight: 22,
+  },
+  optionsGrid: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
+    // Shadow for iOS
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    // Elevation for Android
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  optionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
-  optionContent: {
+  textContainer: {
     flex: 1,
+    marginLeft: 16,
   },
-  optionTitle: {
+  cardTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#1e293b',
   },
-  optionDescription: {
+  cardDesc: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  arrowContainer: {
+    paddingLeft: 8,
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 6,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
 });
 
 export default ProfileSettingsScreen;
-

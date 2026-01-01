@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -20,20 +21,21 @@ import {
   stopStepTracking,
 } from '../../services/healthService';
 
+const { width } = Dimensions.get('window');
+
 const StepsGoalScreen = ({ navigation }) => {
   const [stepsGoal, setStepsGoalState] = useState('10000');
   const [todaySteps, setTodaySteps] = useState(0);
   const [weeklyData, setWeeklyData] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // --- LOGIC REMAINS UNCHANGED ---
   const loadData = useCallback(async () => {
     try {
       const goal = await getStepsGoal();
       setStepsGoalState(goal.toString());
-      
       const steps = await getTodaySteps();
       setTodaySteps(steps);
-      
       const weekly = await getWeeklySteps();
       setWeeklyData(weekly);
     } catch (error) {
@@ -44,12 +46,9 @@ const StepsGoalScreen = ({ navigation }) => {
   useEffect(() => {
     loadData();
     startStepTracking();
-    
-    // Refresh steps every 5 seconds
     const interval = setInterval(() => {
       getTodaySteps().then(setTodaySteps);
     }, 5000);
-
     return () => {
       clearInterval(interval);
       stopStepTracking();
@@ -62,13 +61,12 @@ const StepsGoalScreen = ({ navigation }) => {
       Alert.alert('Invalid Goal', 'Please enter a valid step goal.');
       return;
     }
-
     setLoading(true);
     try {
       await setStepsGoal(goal);
-      Alert.alert('Success', 'Step goal updated!');
+      Alert.alert('Success', 'Goal updated!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save step goal.');
+      Alert.alert('Error', 'Failed to save.');
     } finally {
       setLoading(false);
     }
@@ -81,8 +79,7 @@ const StepsGoalScreen = ({ navigation }) => {
 
   const getDayName = (dateString) => {
     const date = new Date(dateString);
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[date.getDay()];
+    return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][date.getDay()];
   };
 
   const getTotalWeeklySteps = () => {
@@ -91,93 +88,102 @@ const StepsGoalScreen = ({ navigation }) => {
 
   return (
     <ScreenContainer>
+      {/* Modern Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backAction}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Steps Goal</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Activity</Text>
+        <TouchableOpacity style={styles.infoButton}>
+          <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Today's Progress */}
-        <View style={styles.progressCard}>
-          <Text style={styles.cardTitle}>Today's Steps</Text>
-          <Text style={styles.stepsValue}>{todaySteps.toLocaleString()}</Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${getProgressPercentage()}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {getProgressPercentage().toFixed(0)}% of {parseInt(stepsGoal, 10).toLocaleString()} steps
-            </Text>
-          </View>
-        </View>
-
-        {/* Set Goal */}
-        <View style={styles.goalCard}>
-          <Text style={styles.cardTitle}>Daily Step Goal</Text>
-          <FormTextInput
-            label="Goal (Steps)"
-            placeholder="10000"
-            keyboardType="numeric"
-            value={stepsGoal}
-            onChangeText={setStepsGoalState}
-          />
-          <PrimaryButton
-            title="Save Goal"
-            onPress={handleSaveGoal}
-            loading={loading}
-            style={styles.saveButton}
-          />
-        </View>
-
-        {/* Weekly Summary */}
-        <View style={styles.weeklyCard}>
-          <Text style={styles.cardTitle}>Weekly Summary</Text>
-          <View style={styles.weeklySummary}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Total Steps</Text>
-              <Text style={styles.summaryValue}>
-                {getTotalWeeklySteps().toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Daily Average</Text>
-              <Text style={styles.summaryValue}>
-                {Math.round(getTotalWeeklySteps() / 7).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Weekly Progress */}
-        <View style={styles.weeklyProgressCard}>
-          <Text style={styles.cardTitle}>Weekly Progress</Text>
-          <View style={styles.weeklyGrid}>
-            {Object.entries(weeklyData).map(([date, steps]) => (
-              <View key={date} style={styles.weeklyItem}>
-                <Text style={styles.weeklyDay}>{getDayName(date)}</Text>
-                <View style={styles.weeklyBarContainer}>
-                  <View
-                    style={[
-                      styles.weeklyBar,
-                      {
-                        height: `${Math.min((steps / parseInt(stepsGoal, 10)) * 100, 100)}%`,
-                      },
-                    ]}
-                  />
+        
+        {/* Progress Ring Card */}
+        <View style={styles.mainCard}>
+          <View style={styles.ringContainer}>
+             {/* Visual representation of a ring progress */}
+            <View style={styles.outerRing}>
+                <View style={styles.innerRing}>
+                    <Ionicons name="footsteps" size={32} color="#10b981" />
+                    <Text style={styles.mainStepsValue}>{todaySteps.toLocaleString()}</Text>
+                    <Text style={styles.mainStepsLabel}>Steps Today</Text>
                 </View>
-                <Text style={styles.weeklySteps}>{steps.toLocaleString()}</Text>
-              </View>
-            ))}
+            </View>
+          </View>
+          
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressHeader}>
+                <Text style={styles.percentageText}>{getProgressPercentage().toFixed(0)}% of goal</Text>
+                <Text style={styles.goalTarget}>{parseInt(stepsGoal).toLocaleString()} target</Text>
+            </View>
+            <View style={styles.track}>
+                <View style={[styles.fill, { width: `${getProgressPercentage()}%` }]} />
+            </View>
           </View>
         </View>
+
+        {/* Weekly Stats Summary Tiles */}
+        <View style={styles.statsRow}>
+            <View style={[styles.statTile, { backgroundColor: '#ECFDF5' }]}>
+                <Text style={styles.statLabel}>Weekly Total</Text>
+                <Text style={[styles.statValue, { color: '#065F46' }]}>
+                    {getTotalWeeklySteps().toLocaleString()}
+                </Text>
+            </View>
+            <View style={[styles.statTile, { backgroundColor: '#F0FDFA' }]}>
+                <Text style={styles.statLabel}>Avg. Daily</Text>
+                <Text style={[styles.statValue, { color: '#0F766E' }]}>
+                    {Math.round(getTotalWeeklySteps() / 7).toLocaleString()}
+                </Text>
+            </View>
+        </View>
+
+        {/* Weekly History Chart */}
+        <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>Weekly Breakdown</Text>
+            <View style={styles.chartArea}>
+                {Object.entries(weeklyData).map(([date, steps]) => {
+                    const goalNum = parseInt(stepsGoal, 10);
+                    const isGoalMet = steps >= goalNum;
+                    const height = Math.min((steps / goalNum) * 100, 100);
+                    return (
+                        <View key={date} style={styles.barWrapper}>
+                            <View style={styles.barBackground}>
+                                <View style={[
+                                    styles.barFill, 
+                                    { height: `${height}%`, backgroundColor: isGoalMet ? '#10b981' : '#34d399' }
+                                ]} />
+                            </View>
+                            <Text style={styles.barDay}>{getDayName(date)}</Text>
+                        </View>
+                    );
+                })}
+            </View>
+        </View>
+
+        {/* Goal Management Section */}
+        <View style={styles.goalSection}>
+            <Text style={styles.historyTitle}>Adjust Daily Goal</Text>
+            <View style={styles.inputContainer}>
+                <FormTextInput
+                    placeholder="10000"
+                    keyboardType="numeric"
+                    value={stepsGoal}
+                    onChangeText={setStepsGoalState}
+                    containerStyle={styles.customInput}
+                />
+                <PrimaryButton
+                    title="Update"
+                    onPress={handleSaveGoal}
+                    loading={loading}
+                    style={styles.updateButton}
+                />
+            </View>
+        </View>
+
       </ScrollView>
     </ScreenContainer>
   );
@@ -188,172 +194,136 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
+    paddingTop: 60,
     paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 24,
+    backgroundColor: '#fff',
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  backAction: { width: 40 },
+  infoButton: { width: 40, alignItems: 'flex-end' },
+  
+  content: { flex: 1, backgroundColor: '#F8FAFC' },
+  
+  mainCard: {
+    backgroundColor: '#fff',
+    margin: 20,
+    borderRadius: 32,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  ringContainer: {
+    width: 220,
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  outerRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 12,
+    borderColor: '#F1F5F9', // Background of the ring
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  progressCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+  innerRing: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  cardTitle: {
-    fontSize: 18,
+  mainStepsValue: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#111827',
+    marginTop: 8,
+  },
+  mainStepsLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
+    color: '#64748B',
   },
-  stepsValue: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#10b981',
-    marginBottom: 16,
-  },
-  progressContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  progressBar: {
-    width: '100%',
-    height: 20,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    overflow: 'hidden',
+  
+  progressBarContainer: { width: '100%' },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
-  progressFill: {
+  percentageText: { fontSize: 14, fontWeight: '700', color: '#10b981' },
+  goalTarget: { fontSize: 14, color: '#94A3B8', fontWeight: '500' },
+  track: {
+    height: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  fill: {
     height: '100%',
     backgroundColor: '#10b981',
-    borderRadius: 10,
+    borderRadius: 5,
   },
-  progressText: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  goalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  saveButton: {
-    marginTop: 12,
-  },
-  weeklyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  weeklySummary: {
+
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 20,
   },
-  summaryItem: {
+  statTile: {
     flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-  },
-  summaryLabel: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  weeklyProgressCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 24,
+    justifyContent: 'center',
   },
-  weeklyGrid: {
+  statLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 4, textTransform: 'uppercase' },
+  statValue: { fontSize: 20, fontWeight: '800' },
+
+  historyCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+  },
+  historyTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  chartArea: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: 200,
-    gap: 8,
-  },
-  weeklyItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  weeklyDay: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  weeklyBarContainer: {
-    width: '100%',
     height: 120,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+  },
+  barWrapper: { alignItems: 'center', flex: 1 },
+  barBackground: {
+    width: 8,
+    height: 80,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  weeklyBar: {
-    width: '100%',
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    minHeight: 4,
+  barFill: { width: '100%', borderRadius: 4 },
+  barDay: { marginTop: 12, fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+
+  goalSection: {
+    paddingHorizontal: 20,
+    marginBottom: 40,
   },
-  weeklySteps: {
-    fontSize: 11,
-    color: '#374151',
-    fontWeight: '600',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  customInput: { flex: 1, marginBottom: 0 },
+  updateButton: {
+    height: 54,
+    paddingHorizontal: 24,
+    borderRadius: 16,
   },
 });
 
 export default StepsGoalScreen;
-

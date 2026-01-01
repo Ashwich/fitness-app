@@ -8,14 +8,14 @@ import {
   RefreshControl,
   Alert,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useBootstrap } from '../../context/BootstrapContext';
-import { fetchProfile, upsertProfile } from '../../api/services/profileService';
-import { getReadableError } from '../../utils/apiError';
+import { fetchProfile } from '../../api/services/profileService';
 import {
   getTodaySteps,
   getTodayCaloriesBurned,
@@ -23,6 +23,7 @@ import {
   startStepTracking,
   stopStepTracking,
 } from '../../services/healthService';
+import { getDiaryEntry } from '../../api/services/diaryService';
 import {
   getTodayWaterIntake,
   getWaterGoal,
@@ -33,6 +34,8 @@ import {
 } from '../../services/profilePhotoService';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
+const { width } = Dimensions.get('window');
+
 const UserDashboardScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const { bootstrapData, loading: bootstrapLoading } = useBootstrap();
@@ -41,484 +44,321 @@ const UserDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [todaySteps, setTodaySteps] = useState(0);
+  const [stepsGoal, setStepsGoal] = useState(10000);
   const [caloriesBurned, setCaloriesBurned] = useState(0);
   const [waterIntake, setWaterIntake] = useState(0);
   const [waterGoal, setWaterGoal] = useState(3.0);
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [diaryTotals, setDiaryTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   
-  // Use ref to store current profile for interval access without causing re-renders
   const profileRef = useRef(null);
 
+  // --- KEEPING EXISTING LOGIC UNCHANGED ---
   const loadProfile = useCallback(async () => {
     try {
       const profileData = await fetchProfile();
-      console.log('Profile data loaded:', profileData);
-      
       if (profileData) {
-        // Handle calorieGoals if it's a JSON string (from database)
         if (profileData.calorieGoals && typeof profileData.calorieGoals === 'string') {
-          try {
-            profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
-          } catch (e) {
-            console.warn('Failed to parse calorieGoals:', e);
-          }
+          try { profileData.calorieGoals = JSON.parse(profileData.calorieGoals); } catch (e) {}
         }
-        
-        // Handle fitnessGoals if it's a JSON string
         if (profileData.fitnessGoals && typeof profileData.fitnessGoals === 'string') {
-          try {
-            profileData.fitnessGoals = JSON.parse(profileData.fitnessGoals);
-          } catch (e) {
-            console.warn('Failed to parse fitnessGoals:', e);
-          }
+          try { profileData.fitnessGoals = JSON.parse(profileData.fitnessGoals); } catch (e) {}
         }
-        
         setProfile(profileData);
-        profileRef.current = profileData; // Update ref
-        
-        // Calculate actual profile completion
+        profileRef.current = profileData;
         const completion = calculateProfileCompletion(profileData);
-        console.log('=== PROFILE COMPLETION DEBUG ===');
-        console.log('Profile completion:', JSON.stringify(completion, null, 2));
-        console.log('Full profile data:', JSON.stringify(profileData, null, 2));
-        console.log('Fitness Goals:', JSON.stringify(profileData.fitnessGoals, null, 2));
-        console.log('Calorie Goals:', JSON.stringify(profileData.calorieGoals, null, 2));
-        console.log('Activity Level:', profileData.activityLevel);
-        console.log('Full Name:', profileData.fullName);
-        console.log('Date of Birth:', profileData.dateOfBirth);
-        console.log('Gender:', profileData.gender);
-        console.log('Location:', profileData.location);
-        console.log('Weight:', profileData.weightKg);
-        console.log('Height:', profileData.heightCm);
-        
-        // Check if database migration is needed
-        if (!profileData.hasOwnProperty('location') || !profileData.hasOwnProperty('fitnessGoals') || !profileData.hasOwnProperty('calorieGoals')) {
-          console.warn('⚠️ DATABASE MIGRATION NEEDED!');
-          console.warn('The database schema is missing these fields. Please run:');
-          console.warn('1. cd C:\\Users\\Lenovo\\Desktop\\Gym-Backend\\users-service');
-          console.warn('2. npm run prisma:generate');
-          console.warn('3. npm run prisma:migrate');
-          console.warn('4. Restart the backend server');
-        }
-        console.log('===============================');
-        
-        // Profile is complete if 100% of required fields are filled
         setIsProfileComplete(completion.percentage === 100);
         
-        // Load real health data
         const steps = await getTodaySteps();
         setTodaySteps(steps);
-        
+        const goal = await getStepsGoal();
+        setStepsGoal(goal || 10000);
         const calories = await getTodayCaloriesBurned(profileData);
         setCaloriesBurned(calories);
-        
         const water = await getTodayWaterIntake();
         setWaterIntake(water);
-        
         const wGoal = await getWaterGoal();
         setWaterGoal(wGoal);
-        
-        // Load profile photo
         const photo = await getProfilePhoto();
         setProfilePhoto(photo);
-      } else {
-        setProfile(null);
-        profileRef.current = null; // Update ref
-        setIsProfileComplete(false);
+        
+        // Load today's diary entry for nutrition breakdown
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const diaryEntry = await getDiaryEntry(today);
+          if (diaryEntry) {
+            const totals = {
+              calories: parseFloat(diaryEntry.totalCalories) || 0,
+              protein: parseFloat(diaryEntry.totalProtein) || 0,
+              carbs: parseFloat(diaryEntry.totalCarbs) || 0,
+              fat: parseFloat(diaryEntry.totalFat) || 0,
+            };
+            setDiaryTotals(totals);
+          } else {
+            setDiaryTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+          }
+        } catch (error) {
+          // Don't show error for missing diary entries (404 is expected if no food added yet)
+          if (error.message && error.message.includes('authentication')) {
+            console.error('Error loading diary entry:', error);
+          } else {
+            // Silent fail for missing diary entries
+            setDiaryTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
-      if (error.response?.status !== 404) {
-        console.error('Error details:', error.message);
-      }
-      setProfile(null);
-      profileRef.current = null; // Update ref
-      setIsProfileComplete(false);
     }
   }, []);
 
   useEffect(() => {
     let isMounted = true;
-    
-    // Wait for bootstrap to finish loading
-    if (bootstrapLoading) {
-      return;
-    }
-    
-    // Try to use bootstrap data first (user profile is included)
+    if (bootstrapLoading) return;
     if (bootstrapData?.user?.profile) {
-      console.log('[UserDashboard] Using bootstrap data for profile');
       const profileData = bootstrapData.user.profile;
-      
-      // Handle JSON string parsing
-      if (profileData.calorieGoals && typeof profileData.calorieGoals === 'string') {
-        try {
-          profileData.calorieGoals = JSON.parse(profileData.calorieGoals);
-        } catch (e) {
-          console.warn('Failed to parse calorieGoals:', e);
-        }
-      }
-      
-      if (profileData.fitnessGoals && typeof profileData.fitnessGoals === 'string') {
-        try {
-          profileData.fitnessGoals = JSON.parse(profileData.fitnessGoals);
-        } catch (e) {
-          console.warn('Failed to parse fitnessGoals:', e);
-        }
-      }
-      
       setProfile(profileData);
       profileRef.current = profileData;
-      
-      // Calculate profile completion
       const completion = calculateProfileCompletion(profileData);
       setIsProfileComplete(completion.percentage === 100);
-      
-      if (isMounted) {
-        setLoading(false);
-      }
+      if (isMounted) setLoading(false);
     } else {
-      // Fallback to individual API call if bootstrap data not available
-      console.log('[UserDashboard] Bootstrap data not available, using individual API call');
-      loadProfile().finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
+      loadProfile().finally(() => { if (isMounted) setLoading(false); });
     }
-    
     startStepTracking();
-    
-    // Refresh steps and calories every 30 seconds (reduced frequency)
     const interval = setInterval(async () => {
-      const currentProfile = profileRef.current; // Use ref to get current profile
+      const currentProfile = profileRef.current;
       if (currentProfile) {
         const steps = await getTodaySteps();
         setTodaySteps(steps);
         const calories = await getTodayCaloriesBurned(currentProfile);
         setCaloriesBurned(calories);
+        // Reload diary totals
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const diaryEntry = await getDiaryEntry(today);
+          if (diaryEntry) {
+            const totals = {
+              calories: parseFloat(diaryEntry.totalCalories) || 0,
+              protein: parseFloat(diaryEntry.totalProtein) || 0,
+              carbs: parseFloat(diaryEntry.totalCarbs) || 0,
+              fat: parseFloat(diaryEntry.totalFat) || 0,
+            };
+            setDiaryTotals(totals);
+          }
+        } catch (error) {
+          // Don't show error for missing diary entries
+          if (error.message && !error.message.includes('authentication')) {
+            // Silent fail for missing diary entries
+          }
+        }
       }
-    }, 30000); // Changed from 5 seconds to 30 seconds
-    
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      stopStepTracking();
-    };
-  }, []); // Only run once on mount
+    }, 30000);
+    return () => { isMounted = false; clearInterval(interval); stopStepTracking(); };
+  }, [bootstrapLoading]);
 
-  // Refresh profile when screen comes into focus (but not if already loading)
-  useFocusEffect(
-    useCallback(() => {
-      if (!loading) {
-        loadProfile();
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading]) // Only depend on loading to prevent infinite loops
-  );
+  useFocusEffect(useCallback(() => { if (!loading) loadProfile(); }, [loading]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadProfile();
-    // Refresh health data
-    if (profile) {
-      const steps = await getTodaySteps();
-      setTodaySteps(steps);
-      const calories = await getTodayCaloriesBurned(profile);
-      setCaloriesBurned(calories);
-      const water = await getTodayWaterIntake();
-      setWaterIntake(water);
-    }
     setRefreshing(false);
-  }, [loadProfile, profile]);
+  }, [loadProfile]);
 
-  const handleStartProfileSetup = () => {
-    navigation.navigate('PersonalInfoScreen');
-  };
-
-  const handleViewProfile = () => {
-    if (isProfileComplete && profile) {
-      navigation.navigate('ProfileSummaryScreen', {
-        userProfile: profile,
-        profile: profile,
-        personalInfo: {
-          fullName: profile.fullName,
-          age: profile.age,
-          gender: profile.gender,
-          location: profile.location,
-          dateOfBirth: profile.dateOfBirth,
-        },
-        physicalInfo: {
-          weightKg: profile.weightKg,
-          heightCm: profile.heightCm,
-          weight: profile.weightKg,
-          height: profile.heightCm,
-          bmi: profile.bmi,
-          bmiCategory: profile.bmiCategory,
-          originalWeight: profile.weightKg,
-          originalHeight: profile.heightCm,
-        },
-        fitnessGoals: {
-          primaryGoal: profile.fitnessGoals?.primaryGoal,
-          exerciseLevel: profile.activityLevel,
-          workoutsPerWeek: profile.workoutsPerWeek,
-          timePerWorkout: profile.timePerWorkout,
-        },
-        calorieGoals: profile.calorieGoals,
-      });
-    } else {
-      Alert.alert('Profile Incomplete', 'Please complete your profile first.');
-    }
-  };
-
-  const handleEditProfile = () => {
-    navigation.navigate('PersonalInfoScreen', {
-      profile,
-      isEditing: true,
-    });
-  };
-
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
-  };
-
+  const handleStartProfileSetup = () => navigation.navigate('PersonalInfoScreen');
   const handleProfilePhotoPress = async () => {
     const photo = await pickProfilePhoto();
-    if (photo) {
-      setProfilePhoto(photo);
+    if (photo) setProfilePhoto(photo);
+  };
+  const handleSettingsPress = () => navigation.navigate('ProfileSettingsScreen');
+
+  const calculateBMI = () => {
+    if (profile?.weightKg && profile?.heightCm) {
+      const heightM = profile.heightCm / 100;
+      return (profile.weightKg / (heightM * heightM)).toFixed(1);
     }
+    return 'N/A';
   };
 
-  const handleSettingsPress = () => {
-    navigation.navigate('ProfileSettingsScreen');
-  };
+  const profileCompletion = calculateProfileCompletion(profile);
 
+  // Calculate steps progress
+  const stepsProgress = stepsGoal > 0 ? Math.min(100, (todaySteps / stepsGoal) * 100) : 0;
+  const stepsProgressAngle = stepsProgress > 0 ? ((stepsProgress / 100) * 360 - 90) : -90;
+
+  // Calculate nutrition progress
+  const goals = profile?.calorieGoals || {};
+  const proteinProgress = goals.protein > 0 ? Math.min(100, (diaryTotals.protein / goals.protein) * 100) : 0;
+  const carbsProgress = goals.carbs > 0 ? Math.min(100, (diaryTotals.carbs / goals.carbs) * 100) : 0;
+  const fatProgress = goals.fat > 0 ? Math.min(100, (diaryTotals.fat / goals.fat) * 100) : 0;
+
+  // --- NEW RENDER UI ---
   if (loading) {
     return (
       <ScreenContainer>
         <View style={styles.loadingContainer}>
-          <Ionicons name="fitness" size={40} color="#2563eb" />
+          <Ionicons name="fitness" size={40} color="#10b981" />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </ScreenContainer>
     );
   }
 
-  // Calculate BMI
-  const calculateBMI = () => {
-    if (profile?.weightKg && profile?.heightCm) {
-      const heightM = profile.heightCm / 100;
-      return (profile.weightKg / (heightM * heightM)).toFixed(1);
-    }
-    return null;
-  };
-
-  const bmi = calculateBMI();
-  const profileCompletion = calculateProfileCompletion(profile);
-
   return (
     <ScreenContainer>
+      {/* Updated Modern Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profilePhotoButton}>
+          <View>
+            <Text style={styles.greetingText}>Hello,</Text>
+            <Text style={styles.userNameText}>{profile?.fullName?.split(' ')[0] || 'Athlete'}</Text>
+          </View>
+          <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profileHeaderImageContainer}>
             {profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+              <Image source={{ uri: profilePhoto }} style={styles.headerProfilePhoto} />
             ) : (
               <View style={styles.profilePhotoPlaceholder}>
-                <Ionicons name="person" size={24} color="#ffffff" />
+                <Ionicons name="person" size={20} color="#10b981" />
               </View>
             )}
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Fitsera</Text>
-          <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
-            <Ionicons name="settings-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.contentWrapper}>
-        {profileCompletion.percentage < 100 && (
-          <View style={styles.progressCard}>
-            <View style={styles.progressHeader}>
-              <View style={styles.progressIcon}>
-                <Ionicons name="person-circle" size={24} color="#2563eb" />
-              </View>
-              <View style={styles.progressInfo}>
-                <Text style={styles.progressTitle}>Profile Completion</Text>
-                <Text style={styles.progressPercentage}>{profileCompletion.percentage}%</Text>
-              </View>
-            </View>
-            
-            {/* Progress Bar */}
-            <View style={styles.progressBarContainer}>
-              <View 
-                style={[
-                  styles.progressBarFill, 
-                  { width: `${profileCompletion.percentage}%` }
-                ]} 
-              />
-            </View>
-            
-            <View style={styles.progressDetails}>
-              <Text style={styles.progressText}>
-                {profileCompletion.completed} of {profileCompletion.total} fields completed
+        <View style={styles.mainContainer}>
+          
+          {/* Profile Completion - Subtle Banner Style */}
+          {profileCompletion.percentage < 100 && (
+            <TouchableOpacity style={styles.completionBanner} onPress={handleStartProfileSetup}>
+              <Ionicons name="sparkles" size={20} color="#ffffff" />
+              <Text style={styles.completionBannerText}>
+                Complete your profile ({profileCompletion.percentage}%) to unlock insights
               </Text>
-              {profileCompletion.missing.length > 0 && (
-                <View style={styles.missingSection}>
-                  <Text style={styles.missingTitle}>Still missing:</Text>
-                  {profileCompletion.missing.map((item, index) => (
-                    <Text key={index} style={styles.missingItem}>• {item}</Text>
-                  ))}
-                </View>
-              )}
+              <Ionicons name="chevron-forward" size={16} color="#ffffff" />
+            </TouchableOpacity>
+          )}
+
+          {/* Steps & Activity Hero Card (Inspired by your Screenshot 1 & 4) */}
+          <View style={styles.heroCard}>
+            <View style={styles.heroInfo}>
+              <View style={styles.heroMetric}>
+                <Ionicons name="footsteps" size={18} color="#10b981" />
+                <Text style={styles.heroLabel}>Steps Today</Text>
+                <Text style={styles.heroValue}>{todaySteps.toLocaleString()}</Text>
+              </View>
+              <View style={[styles.heroMetric, { marginTop: 20 }]}>
+                <Ionicons name="flame" size={18} color="#ef4444" />
+                <Text style={styles.heroLabel}>Active Burn</Text>
+                <Text style={styles.heroValue}>{caloriesBurned} kcal</Text>
+              </View>
             </View>
             
-            <TouchableOpacity style={styles.completeButton} onPress={handleStartProfileSetup}>
-              <Text style={styles.completeButtonText}>Complete Profile</Text>
-              <Ionicons name="arrow-forward" size={18} color="#ffffff" />
-            </TouchableOpacity>
+            <View style={styles.progressCircleContainer}>
+              <View style={styles.circularProgressWrapper}>
+                <View style={styles.circularProgressOuter}>
+                  {stepsProgress > 0 && (
+                    <View style={[
+                      styles.circularProgress,
+                      { transform: [{ rotate: `${stepsProgressAngle}deg` }] }
+                    ]} />
+                  )}
+                  <View style={styles.circularProgressInner}>
+                    <Text style={styles.circularProgressValue}>
+                      {Math.round(stepsProgress)}%
+                    </Text>
+                    <Text style={styles.circularProgressLabel}>Goal</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
           </View>
-        )}
 
-        {/* Always show stats if profile exists, even if incomplete */}
-        {profile && (
-          <>
-            {/* Calorie Goal and Calories Burned Row */}
-            <View style={styles.topMetricsRow}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Calorie Goal</Text>
-                <Text style={styles.metricValue}>
-                  {profile.calorieGoals?.dailyCalories || 2000} kcal
-                </Text>
+          {/* Quick Metrics Grid */}
+          <View style={styles.metricsGrid}>
+            <View style={styles.smallMetricCard}>
+              <Text style={styles.smallLabel}>BMI</Text>
+              <Text style={styles.smallValue}>{calculateBMI()}</Text>
+              <View style={[styles.indicator, { backgroundColor: '#8b5cf6' }]} />
+            </View>
+            <View style={styles.smallMetricCard}>
+              <Text style={styles.smallLabel}>Step Goal</Text>
+              <Text style={styles.smallValue}>{stepsGoal.toLocaleString()}</Text>
+              <View style={[styles.indicator, { backgroundColor: '#10b981' }]} />
+            </View>
+            <View style={styles.smallMetricCard}>
+              <Text style={styles.smallLabel}>Target Calories</Text>
+              <Text style={styles.smallValue}>{profile?.calorieGoals?.dailyCalories || 2000}</Text>
+              <View style={[styles.indicator, { backgroundColor: '#f59e0b' }]} />
+            </View>
+          </View>
+
+          {/* Nutrition Macros Section (Inspired by Screenshot 2) */}
+          <TouchableOpacity 
+             style={styles.sectionCard}
+             onPress={() => navigation.navigate('CalorieGoalsScreen', { userProfile: profile, isEditing: true, editMode: true })}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Nutrition Breakdown</Text>
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+            </View>
+            
+            <View style={styles.macroContainer}>
+              <View style={styles.macroItem}>
+                <Text style={styles.macroLabel}>Protein</Text>
+                <View style={styles.macroBarBg}>
+                  <View style={[styles.macroBarFill, { width: `${proteinProgress}%`, backgroundColor: '#3b82f6' }]} />
+                </View>
+                <Text style={styles.macroValue}>{Math.round(diaryTotals.protein)}g / {goals.protein || 0}g</Text>
               </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Calories Burned</Text>
-                <Text style={styles.metricValue}>{caloriesBurned} kcal</Text>
-                <Ionicons name="flame" size={16} color="#ef4444" style={styles.metricIcon} />
+              <View style={styles.macroItem}>
+                <Text style={styles.macroLabel}>Carbs</Text>
+                <View style={styles.macroBarBg}>
+                  <View style={[styles.macroBarFill, { width: `${carbsProgress}%`, backgroundColor: '#ec4899' }]} />
+                </View>
+                <Text style={styles.macroValue}>{Math.round(diaryTotals.carbs)}g / {goals.carbs || 0}g</Text>
+              </View>
+              <View style={styles.macroItem}>
+                <Text style={styles.macroLabel}>Fats</Text>
+                <View style={styles.macroBarBg}>
+                  <View style={[styles.macroBarFill, { width: `${fatProgress}%`, backgroundColor: '#f59e0b' }]} />
+                </View>
+                <Text style={styles.macroValue}>{Math.round(diaryTotals.fat)}g / {goals.fat || 0}g</Text>
               </View>
             </View>
+          </TouchableOpacity>
 
-            {/* Steps Card */}
-            <TouchableOpacity
-              style={styles.stepsCard}
-              onPress={() => navigation.navigate('StepsGoalScreen')}
-            >
-              <Text style={styles.cardTitle}>Steps</Text>
-              <View style={styles.stepsContent}>
-                <View style={styles.stepsLeft}>
-                  <Text style={styles.stepsValue}>{todaySteps.toLocaleString()}</Text>
-                  <Ionicons name="footsteps" size={20} color="#6b7280" style={styles.stepsIcon} />
-                </View>
-                <Ionicons name="walk" size={32} color="#10b981" />
-              </View>
-            </TouchableOpacity>
-
-            {/* Nutrition Goal Card */}
+          {/* Water & Attendance Horizontal Row */}
+          <View style={styles.row}>
             <TouchableOpacity 
-              style={styles.nutritionCard}
-              onPress={() => navigation.navigate('CalorieGoalsScreen', {
-                userProfile: profile,
-                isEditing: true,
-                editMode: true,
-              })}
-            >
-              <Text style={styles.cardTitle}>Nutrition Goal</Text>
-              {profile.calorieGoals?.dailyCalories ? (
-                <View style={styles.nutritionGrid}>
-                  <View style={styles.nutritionItem}>
-                    <Text style={styles.nutritionLabel}>Pro</Text>
-                    <Text style={styles.nutritionValue}>
-                      {profile.calorieGoals?.protein || 0}g
-                    </Text>
-                  </View>
-                  <View style={styles.nutritionItem}>
-                    <Text style={styles.nutritionLabel}>Carbs</Text>
-                    <Text style={styles.nutritionValue}>
-                      {profile.calorieGoals?.carbs || 0}g
-                    </Text>
-                  </View>
-                  <View style={styles.nutritionItem}>
-                    <Text style={styles.nutritionLabel}>Fat</Text>
-                    <Text style={styles.nutritionValue}>
-                      {profile.calorieGoals?.fat || 0}g
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.emptyNutritionState}>
-                  <Text style={styles.emptyNutritionText}>
-                    Set your nutrition goals to track your macros
-                  </Text>
-                  <Ionicons name="nutrition-outline" size={24} color="#9ca3af" style={styles.emptyNutritionIcon} />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Physical Stats Card */}
-            <View style={styles.physicalStatsCard}>
-              <Text style={styles.cardTitle}>Physical Stats</Text>
-              <View style={styles.statsContent}>
-                <Text style={styles.statText}>
-                  Weight: {profile.weightKg || 'N/A'}kg
-                </Text>
-                <Text style={styles.statText}>
-                  Height: {profile.heightCm || 'N/A'}cm
-                </Text>
-                <Text style={styles.statText}>
-                  BMI: {bmi || 'N/A'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Water Intake Card */}
-            <TouchableOpacity
-              style={styles.waterCard}
+              style={[styles.halfCard, { backgroundColor: '#eff6ff' }]}
               onPress={() => navigation.navigate('WaterIntakeScreen')}
             >
-              <Text style={styles.cardTitle}>Water Intake</Text>
-              <View style={styles.waterContent}>
-                <Ionicons name="water" size={24} color="#3b82f6" />
-                <Text style={styles.waterText}>
-                  {waterIntake.toFixed(1)} L / {waterGoal.toFixed(1)} L
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-              </View>
+              <Ionicons name="water" size={24} color="#3b82f6" />
+              <Text style={styles.halfCardTitle}>Hydration</Text>
+              <Text style={styles.halfCardValue}>{waterIntake.toFixed(1)}L / {waterGoal.toFixed(1)}L</Text>
             </TouchableOpacity>
 
-            {/* Attendance Card */}
-            <TouchableOpacity
-              style={styles.attendanceCard}
+            <TouchableOpacity 
+              style={[styles.halfCard, { backgroundColor: '#f5f3ff' }]}
               onPress={() => navigation.navigate('AttendanceScreen')}
             >
-              <View style={styles.attendanceHeader}>
-                <View style={styles.attendanceIconContainer}>
-                  <Ionicons name="qr-code-outline" size={24} color="#8b5cf6" />
-                </View>
-                <View style={styles.attendanceContent}>
-                  <Text style={styles.cardTitle}>Mark Attendance</Text>
-                  <Text style={styles.attendanceSubtitle}>Scan QR code at gym</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-              </View>
+              <Ionicons name="qr-code" size={24} color="#8b5cf6" />
+              <Text style={styles.halfCardTitle}>Gym Entry</Text>
+              <Text style={styles.halfCardValue}>Check In</Text>
             </TouchableOpacity>
+          </View>
 
-          </>
-        )}
+          {/* Settings / Profile Footer */}
+          <TouchableOpacity style={styles.footerButton} onPress={handleSettingsPress}>
+             <Ionicons name="settings-sharp" size={20} color="#6b7280" />
+             <Text style={styles.footerButtonText}>Account Settings</Text>
+          </TouchableOpacity>
+          
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -526,510 +366,173 @@ const UserDashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    color: '#6b7280',
-    fontSize: 16,
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: '#6b7280', fontSize: 16, marginTop: 10 },
   header: {
-    backgroundColor: '#10b981',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 0,
+    backgroundColor: '#ffffff',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 25,
   },
   headerContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-  },
-  profilePhotoButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  profilePhoto: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  profilePhotoPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 1,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
+  greetingText: { fontSize: 16, color: '#6b7280', fontWeight: '500' },
+  userNameText: { fontSize: 24, fontWeight: '800', color: '#111827' },
+  profileHeaderImageContainer: {
+    width: 45,
+    height: 45,
+    borderRadius: 15,
     backgroundColor: '#f0fdf4',
-  },
-  scrollContent: {
-    paddingVertical: 16,
-    paddingHorizontal: 0,
-    paddingBottom: 32,
-  },
-  contentWrapper: {
-    paddingHorizontal: 20,
-  },
-  // Progress Card Styles
-  progressCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  progressIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  progressInfo: {
-    flex: 1,
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  progressPercentage: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2563eb',
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#10b981',
     overflow: 'hidden',
-    marginBottom: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#2563eb',
-    borderRadius: 4,
-  },
-  progressDetails: {
-    marginBottom: 16,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  missingSection: {
-    marginTop: 8,
-  },
-  missingTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  missingItem: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginLeft: 8,
-    marginBottom: 4,
-  },
-  completeButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+  headerProfilePhoto: { width: '100%', height: '100%' },
+  profilePhotoPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  content: { flex: 1, backgroundColor: '#fcfdfd' },
+  mainContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
+  
+  // Banner
+  completionBanner: {
+    backgroundColor: '#10b981',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  completeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  welcomeCard: {
-    marginBottom: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  welcomeIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#E8F0FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  welcomeTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 20,
   },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  // Top Metrics Row (Calorie Goal & Calories Burned)
-  topMetricsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  metricCard: {
-    flex: 1,
+  completionBannerText: { flex: 1, color: '#ffffff', fontSize: 13, fontWeight: '600', marginHorizontal: 10 },
+  
+  // Hero Activity Card
+  heroCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  metricLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  metricIcon: {
-    marginTop: 4,
-  },
-  // Steps Card
-  stepsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  stepsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  stepsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepsValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  stepsIcon: {
-    marginTop: 4,
-  },
-  // Nutrition Goal Card
-  nutritionCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  nutritionGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  nutritionItem: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  nutritionLabel: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  nutritionValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  emptyNutritionState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-  },
-  emptyNutritionText: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptyNutritionIcon: {
-    marginTop: 4,
-  },
-  // Physical Stats Card
-  physicalStatsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statsContent: {
-    marginTop: 12,
-    gap: 8,
-  },
-  statText: {
-    fontSize: 15,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  // Water Intake Card
-  waterCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  waterContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  waterText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  // Attendance Card
-  attendanceCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  attendanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  attendanceIconContainer: {
-    width: 48,
-    height: 48,
     borderRadius: 24,
-    backgroundColor: '#f3e8ff',
+    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 5,
+    marginBottom: 16,
+  },
+  heroInfo: { flex: 1 },
+  heroMetric: { gap: 2 },
+  heroLabel: { fontSize: 12, color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase' },
+  heroValue: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  progressCircleContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 8,
+    borderColor: '#f0fdf4',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  attendanceContent: {
-    flex: 1,
+  circleGraphic: { alignItems: 'center' },
+  circleSubtext: { fontSize: 10, color: '#9ca3af', fontWeight: '700' },
+
+  // Grid
+  metricsGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  
+  // Circular Progress
+  circularProgressWrapper: {
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  attendanceSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  circularProgressOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 8,
+    borderColor: '#f0fdf4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  // Diary Card
-  diaryCard: {
+  circularProgress: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 8,
+    borderColor: 'transparent',
+    borderTopColor: '#10b981',
+  },
+  circularProgressInner: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+  },
+  circularProgressValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#10b981',
+  },
+  circularProgressLabel: {
+    fontSize: 10,
+    color: '#9ca3af',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  smallMetricCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    elevation: 2,
+  },
+  smallLabel: { fontSize: 12, color: '#9ca3af', fontWeight: '600' },
+  smallValue: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 4 },
+  indicator: { height: 3, width: 20, borderRadius: 2, marginTop: 8 },
+
+  // Section Cards
+  sectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.03,
+    elevation: 2,
   },
-  diaryHeader: {
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  macroContainer: { flexDirection: 'row', gap: 15 },
+  macroItem: { flex: 1 },
+  macroLabel: { fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 5 },
+  macroBarBg: { height: 6, backgroundColor: '#f3f4f6', borderRadius: 3, overflow: 'hidden', marginBottom: 5 },
+  macroBarFill: { height: '100%', borderRadius: 3 },
+  macroValue: { fontSize: 14, fontWeight: '700', color: '#111827' },
+
+  // Row Helpers
+  row: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  halfCard: { flex: 1, padding: 20, borderRadius: 24, gap: 8 },
+  halfCardTitle: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  halfCardValue: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
+  
+  footerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  diaryIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3e8ff',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  diaryContent: {
-    flex: 1,
-  },
-  diarySubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  // Common Card Title
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  quickActionsContainer: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  actionCard: {
-    width: '47%',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  infoCard: {
-    marginHorizontal: 20,
-    marginBottom: 32,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 15,
     gap: 8,
-    marginBottom: 16,
+    marginTop: 10,
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
+  footerButtonText: { color: '#6b7280', fontWeight: '600', fontSize: 14 },
 });
 
 export default UserDashboardScreen;

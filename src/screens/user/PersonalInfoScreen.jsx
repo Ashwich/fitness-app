@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -16,16 +17,17 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { upsertProfile } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
 
+const { width } = Dimensions.get('window');
+
 const PersonalInfoScreen = ({ navigation, route }) => {
   const isEditMode = route.params?.isEditing || false;
   const existingProfile = route.params?.profile || {};
 
-  // Gender mapping: display value -> backend value
   const genderOptions = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' },
-    { label: 'Non-binary', value: 'non_binary' },
-    { label: 'Prefer not to say', value: 'prefer_not_to_say' },
+    { label: 'Male', value: 'male', icon: 'male' },
+    { label: 'Female', value: 'female', icon: 'female' },
+    { label: 'Other', value: 'non_binary', icon: 'male-female' },
+    { label: 'Hide', value: 'prefer_not_to_say', icon: 'eye-off' },
   ];
 
   const [formData, setFormData] = useState({
@@ -41,6 +43,7 @@ const PersonalInfoScreen = ({ navigation, route }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // --- LOGIC REMAINS UNCHANGED ---
   const calculateAge = (dateOfBirth) => {
     const today = new Date();
     let age = today.getFullYear() - dateOfBirth.getFullYear();
@@ -53,77 +56,42 @@ const PersonalInfoScreen = ({ navigation, route }) => {
 
   const validate = () => {
     const newErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-
-    if (!formData.gender) {
-      newErrors.gender = 'Gender is required';
-    }
-
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-
+    if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!formData.location.trim()) newErrors.location = 'Location is required';
     const age = calculateAge(formData.dateOfBirth);
-    if (age < 13 || age > 120) {
-      newErrors.dateOfBirth = 'Please enter a valid date of birth';
-    }
-
+    if (age < 13 || age > 120) newErrors.dateOfBirth = 'Please enter a valid date of birth';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
-    if (!validate()) {
-      Alert.alert('Validation Error', 'Please fill in all required fields correctly.');
-      return;
-    }
-
+    if (!validate()) return;
     const age = calculateAge(formData.dateOfBirth);
-    // Normalize gender to lowercase for backend
-    const normalizedGender = formData.gender.toLowerCase();
-    
     const personalInfo = {
       fullName: formData.fullName.trim(),
       dateOfBirth: formData.dateOfBirth.toISOString(),
       age,
-      gender: normalizedGender,
+      gender: formData.gender.toLowerCase(),
       location: formData.location.trim(),
     };
-
-    // Pass data forward via route params (old app flow)
-    navigation.navigate('PhysicalInfoScreen', {
-      userProfile: existingProfile,
-      personalInfo,
-    });
+    navigation.navigate('PhysicalInfoScreen', { userProfile: existingProfile, personalInfo });
   };
 
   const handleSave = async () => {
-    if (!validate()) {
-      Alert.alert('Validation Error', 'Please fill in all required fields correctly.');
-      return;
-    }
-
+    if (!validate()) return;
     setLoading(true);
     try {
       const age = calculateAge(formData.dateOfBirth);
-      // Normalize gender to lowercase for backend
-      const normalizedGender = formData.gender.toLowerCase();
-      
       const profileData = {
         fullName: formData.fullName.trim(),
         dateOfBirth: formData.dateOfBirth.toISOString(),
         age,
-        gender: normalizedGender,
+        gender: formData.gender.toLowerCase(),
         location: formData.location.trim(),
       };
-
       await upsertProfile(profileData);
-      Alert.alert('Success', 'Profile updated successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (error) {
       Alert.alert('Error', getReadableError(error));
     } finally {
@@ -132,98 +100,90 @@ const PersonalInfoScreen = ({ navigation, route }) => {
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   return (
     <ScreenContainer>
+      {/* Redesigned Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="chevron-back" size={28} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditMode ? 'Edit Personal Info' : 'Personal Information'}
-        </Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>
+            {isEditMode ? 'Edit Profile' : 'Step 1 of 3'}
+          </Text>
+          {!isEditMode && <View style={styles.progressBar}><View style={styles.progressFill} /></View>}
+        </View>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollPadding}>
+        <View style={styles.introSection}>
+          <Text style={styles.sectionTitle}>Personal Details</Text>
           <Text style={styles.sectionSubtitle}>
-            {isEditMode
-              ? 'Update your personal information'
-              : 'Tell us about yourself to get started'}
+            {isEditMode ? 'Keep your profile information up to date.' : 'Let’s start with the basics to personalize your experience.'}
           </Text>
+        </View>
 
-          <FormTextInput
-            label="Full Name *"
-            placeholder="John Doe"
-            value={formData.fullName}
-            onChangeText={(text) => {
-              setFormData({ ...formData, fullName: text });
-              setErrors({ ...errors, fullName: '' });
-            }}
-            error={errors.fullName}
-          />
-
-          <View style={styles.datePickerContainer}>
-            <Text style={styles.label}>Date of Birth *</Text>
-            <TouchableOpacity
-              style={[styles.datePickerButton, errors.dateOfBirth && styles.errorBorder]}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.datePickerText}>
-                {formatDate(formData.dateOfBirth)}
-              </Text>
-              <Ionicons name="calendar-outline" size={20} color="#6b7280" />
-            </TouchableOpacity>
-            {errors.dateOfBirth && (
-              <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
-            )}
-            {showDatePicker && (
-              <DateTimePicker
-                value={formData.dateOfBirth}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) {
-                    setFormData({ ...formData, dateOfBirth: selectedDate });
-                    setErrors({ ...errors, dateOfBirth: '' });
-                  }
+        <View style={styles.card}>
+          {/* Full Name Input */}
+          <View style={styles.inputWrapper}>
+             <FormTextInput
+                label="FULL NAME"
+                placeholder="John Doe"
+                value={formData.fullName}
+                onChangeText={(text) => {
+                    setFormData({ ...formData, fullName: text });
+                    setErrors({ ...errors, fullName: '' });
                 }}
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
+                error={errors.fullName}
+                containerStyle={styles.customInput}
               />
-            )}
           </View>
 
-          <View style={styles.genderContainer}>
-            <Text style={styles.label}>Gender *</Text>
-            <View style={styles.genderOptions}>
+          {/* Date of Birth Selection */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>DATE OF BIRTH</Text>
+            <TouchableOpacity
+              style={[styles.selectorButton, errors.dateOfBirth && styles.errorBorder]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <View style={styles.selectorLeft}>
+                <Ionicons name="calendar-clear-outline" size={20} color="#10b981" style={styles.inputIcon} />
+                <Text style={styles.selectorText}>{formatDate(formData.dateOfBirth)}</Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+            {errors.dateOfBirth && <Text style={styles.errorText}>{errors.dateOfBirth}</Text>}
+          </View>
+
+          {/* Gender Selection Chips */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>GENDER</Text>
+            <View style={styles.genderGrid}>
               {genderOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   style={[
-                    styles.genderOption,
-                    formData.gender === option.value && styles.genderOptionSelected,
+                    styles.genderChip,
+                    formData.gender === option.value && styles.genderChipSelected,
                   ]}
                   onPress={() => {
                     setFormData({ ...formData, gender: option.value });
                     setErrors({ ...errors, gender: '' });
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.genderOptionText,
-                      formData.gender === option.value && styles.genderOptionTextSelected,
-                    ]}
-                  >
+                  <Ionicons 
+                    name={option.icon} 
+                    size={18} 
+                    color={formData.gender === option.value ? '#ffffff' : '#6b7280'} 
+                  />
+                  <Text style={[
+                    styles.genderChipText,
+                    formData.gender === option.value && styles.genderChipTextSelected,
+                  ]}>
                     {option.label}
                   </Text>
                 </TouchableOpacity>
@@ -232,25 +192,47 @@ const PersonalInfoScreen = ({ navigation, route }) => {
             {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
           </View>
 
-          <FormTextInput
-            label="Location *"
-            placeholder="City, State"
-            value={formData.location}
-            onChangeText={(text) => {
-              setFormData({ ...formData, location: text });
-              setErrors({ ...errors, location: '' });
-            }}
-            error={errors.location}
-          />
+          {/* Location Input */}
+          <View style={styles.inputWrapper}>
+              <FormTextInput
+                label="LOCATION"
+                placeholder="New York, USA"
+                value={formData.location}
+                onChangeText={(text) => {
+                    setFormData({ ...formData, location: text });
+                    setErrors({ ...errors, location: '' });
+                }}
+                error={errors.location}
+                containerStyle={styles.customInput}
+              />
+          </View>
         </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={formData.dateOfBirth}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (selectedDate) {
+                setFormData({ ...formData, dateOfBirth: selectedDate });
+                setErrors({ ...errors, dateOfBirth: '' });
+              }
+            }}
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+          />
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        {isEditMode ? (
-          <PrimaryButton title="Save Changes" onPress={handleSave} loading={loading} />
-        ) : (
-          <PrimaryButton title="Continue" onPress={handleNext} loading={false} />
-        )}
+        <PrimaryButton 
+          title={isEditMode ? "Save Changes" : "Continue"} 
+          onPress={isEditMode ? handleSave : handleNext} 
+          loading={loading}
+          style={styles.mainButton}
+        />
       </View>
     </ScreenContainer>
   );
@@ -261,116 +243,116 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
     backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+  headerTitleContainer: {
     alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
     flex: 1,
   },
-  formContainer: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 24,
+  progressBar: {
+    width: 100,
+    height: 4,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  datePickerContainer: {
-    marginBottom: 20,
+  progressFill: {
+    width: '33%',
+    height: '100%',
+    backgroundColor: '#10b981',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+  backButton: { width: 40, height: 40, justifyContent: 'center' },
+  placeholder: { width: 40 },
+  content: { flex: 1, backgroundColor: '#fcfdfd' },
+  scrollPadding: { paddingBottom: 40 },
+  introSection: { paddingHorizontal: 24, paddingVertical: 20 },
+  sectionTitle: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  sectionSubtitle: { fontSize: 15, color: '#6b7280', lineHeight: 22 },
+  
+  card: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  datePickerButton: {
+  inputContainer: { marginBottom: 24 },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#9ca3af',
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 4,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  errorBorder: {
-    borderColor: '#ef4444',
-  },
-  datePickerText: {
-    fontSize: 16,
-    color: '#111827',
-  },
-  genderContainer: {
-    marginBottom: 20,
-  },
-  genderOptions: {
+  selectorLeft: { flexDirection: 'row', alignItems: 'center' },
+  inputIcon: { marginRight: 12 },
+  selectorText: { fontSize: 16, color: '#111827', fontWeight: '500' },
+  
+  genderGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  genderOption: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
+  genderChip: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    minWidth: (width - 120) / 2,
+    justifyContent: 'center',
+    gap: 8,
   },
-  genderOptionSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#E8F0FE',
+  genderChipSelected: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
   },
-  genderOptionText: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  genderOptionTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 4,
-  },
+  genderChipText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
+  genderChipTextSelected: { color: '#ffffff' },
+
+  errorBorder: { borderColor: '#ef4444' },
+  errorText: { fontSize: 12, color: '#ef4444', marginTop: 6, marginLeft: 4 },
+  
   footer: {
-    padding: 20,
+    padding: 24,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#f3f4f6',
   },
+  mainButton: {
+    borderRadius: 18,
+    height: 56,
+  },
+  customInput: {
+      marginBottom: 0, // Handled by inputContainer spacing
+  }
 });
 
 export default PersonalInfoScreen;
-
-

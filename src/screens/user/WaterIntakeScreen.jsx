@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -22,6 +23,8 @@ import {
   areRemindersEnabled,
 } from '../../services/waterIntakeService';
 
+const { width } = Dimensions.get('window');
+
 const WaterIntakeScreen = ({ navigation }) => {
   const [waterGoal, setWaterGoalState] = useState('3.0');
   const [todayIntake, setTodayIntake] = useState(0);
@@ -29,17 +32,15 @@ const WaterIntakeScreen = ({ navigation }) => {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // --- LOGIC REMAINS UNCHANGED ---
   const loadData = useCallback(async () => {
     try {
       const goal = await getWaterGoal();
       setWaterGoalState(goal.toString());
-      
       const intake = await getTodayWaterIntake();
       setTodayIntake(intake);
-      
       const weekly = await getWeeklyWaterIntake();
       setWeeklyData(weekly);
-      
       const reminders = await areRemindersEnabled();
       setRemindersEnabled(reminders);
     } catch (error) {
@@ -47,9 +48,7 @@ const WaterIntakeScreen = ({ navigation }) => {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleSaveGoal = async () => {
     const goal = parseFloat(waterGoal);
@@ -57,16 +56,13 @@ const WaterIntakeScreen = ({ navigation }) => {
       Alert.alert('Invalid Goal', 'Please enter a valid water goal in liters.');
       return;
     }
-
     setLoading(true);
     try {
       await setWaterGoal(goal);
-      Alert.alert('Success', 'Water goal updated!');
+      Alert.alert('Success', 'Daily goal updated!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save water goal.');
-    } finally {
-      setLoading(false);
-    }
+      Alert.alert('Error', 'Failed to save goal.');
+    } finally { setLoading(false); }
   };
 
   const handleAddWater = async (amount) => {
@@ -74,19 +70,14 @@ const WaterIntakeScreen = ({ navigation }) => {
       const newIntake = await addWaterIntake(amount);
       setTodayIntake(newIntake);
       await loadData();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add water intake.');
-    }
+    } catch (error) { Alert.alert('Error', 'Failed to add intake.'); }
   };
 
   const handleToggleReminders = async (value) => {
     setRemindersEnabled(value);
     await setupWaterReminders(value, 2);
-    if (value) {
-      Alert.alert('Reminders Enabled', 'You will receive reminders to drink water every 2 hours.');
-    } else {
-      Alert.alert('Reminders Disabled', 'Water intake reminders have been turned off.');
-    }
+    Alert.alert(value ? 'Reminders On' : 'Reminders Off', 
+      value ? 'We will remind you every 2 hours.' : 'Reminders disabled.');
   };
 
   const getProgressPercentage = () => {
@@ -96,113 +87,106 @@ const WaterIntakeScreen = ({ navigation }) => {
 
   const getDayName = (dateString) => {
     const date = new Date(dateString);
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[date.getDay()];
+    return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][date.getDay()];
   };
 
   return (
     <ScreenContainer>
+      {/* Refined Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="close-outline" size={30} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Water Intake</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Hydration</Text>
+        <TouchableOpacity onPress={handleSaveGoal}>
+           <Text style={styles.saveActionText}>Save</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Today's Progress */}
-        <View style={styles.progressCard}>
-          <Text style={styles.cardTitle}>Today's Progress</Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${getProgressPercentage()}%` },
-                ]}
-              />
+        {/* Main Hydration Circle Display */}
+        <View style={styles.heroSection}>
+            <View style={styles.intakeDisplay}>
+                <Text style={styles.intakeValue}>{todayIntake.toFixed(1)}</Text>
+                <Text style={styles.intakeUnit}>Liters Today</Text>
+                <View style={styles.progressPill}>
+                    <Ionicons name="water" size={14} color="#3b82f6" />
+                    <Text style={styles.progressPercent}>{Math.round(getProgressPercentage())}% of goal</Text>
+                </View>
             </View>
-            <Text style={styles.progressText}>
-              {todayIntake.toFixed(1)} L / {waterGoal} L
-            </Text>
-          </View>
+            
+            {/* Visual Wave Bar */}
+            <View style={styles.mainProgressBarContainer}>
+                <View style={[styles.mainProgressBarFill, { height: `${getProgressPercentage()}%` }]} />
+            </View>
         </View>
 
-        {/* Quick Add Buttons */}
-        <View style={styles.quickAddCard}>
-          <Text style={styles.cardTitle}>Quick Add</Text>
-          <View style={styles.quickAddGrid}>
+        {/* Quick Actions Container */}
+        <View style={styles.actionGrid}>
             {[0.25, 0.5, 1.0].map((amount) => (
               <TouchableOpacity
                 key={amount}
-                style={styles.quickAddButton}
+                style={styles.actionButton}
                 onPress={() => handleAddWater(amount)}
               >
-                <Ionicons name="water" size={24} color="#3b82f6" />
-                <Text style={styles.quickAddText}>+{amount}L</Text>
+                <View style={[styles.iconCircle, { backgroundColor: amount >= 1 ? '#3b82f6' : '#dbeafe' }]}>
+                    <Ionicons name="add" size={24} color={amount >= 1 ? '#fff' : '#3b82f6'} />
+                </View>
+                <Text style={styles.actionLabel}>+{amount}L</Text>
               </TouchableOpacity>
             ))}
-          </View>
         </View>
 
-        {/* Set Goal */}
-        <View style={styles.goalCard}>
-          <Text style={styles.cardTitle}>Daily Water Goal</Text>
-          <FormTextInput
-            label="Goal (Liters)"
-            placeholder="3.0"
-            keyboardType="decimal-pad"
-            value={waterGoal}
-            onChangeText={setWaterGoalState}
-          />
-          <PrimaryButton
-            title="Save Goal"
-            onPress={handleSaveGoal}
-            loading={loading}
-            style={styles.saveButton}
-          />
-        </View>
-
-        {/* Reminders */}
-        <View style={styles.reminderCard}>
-          <View style={styles.reminderHeader}>
-            <View>
-              <Text style={styles.cardTitle}>Water Reminders</Text>
-              <Text style={styles.reminderSubtitle}>
-                Get reminded to drink water every 2 hours
-              </Text>
-            </View>
-            <Switch
-              value={remindersEnabled}
-              onValueChange={handleToggleReminders}
-              trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
-              thumbColor="#ffffff"
-            />
-          </View>
-        </View>
-
-        {/* Weekly Progress */}
-        <View style={styles.weeklyCard}>
-          <Text style={styles.cardTitle}>Weekly Progress</Text>
-          <View style={styles.weeklyGrid}>
-            {Object.entries(weeklyData).map(([date, amount]) => (
-              <View key={date} style={styles.weeklyItem}>
-                <Text style={styles.weeklyDay}>{getDayName(date)}</Text>
-                <View style={styles.weeklyBarContainer}>
-                  <View
-                    style={[
-                      styles.weeklyBar,
-                      {
-                        height: `${Math.min((amount / parseFloat(waterGoal)) * 100, 100)}%`,
-                      },
-                    ]}
-                  />
+        {/* Settings & Goals Card */}
+        <View style={styles.settingsCard}>
+            <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                    <Text style={styles.settingTitle}>Reminders</Text>
+                    <Text style={styles.settingSubtitle}>Every 2 hours</Text>
                 </View>
-                <Text style={styles.weeklyAmount}>{amount.toFixed(1)}L</Text>
-              </View>
-            ))}
-          </View>
+                <Switch
+                  value={remindersEnabled}
+                  onValueChange={handleToggleReminders}
+                  trackColor={{ false: '#e5e7eb', true: '#3b82f6' }}
+                  thumbColor="#ffffff"
+                />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                    <Text style={styles.settingTitle}>Target Goal</Text>
+                    <View style={styles.goalInputContainer}>
+                         <FormTextInput
+                            placeholder="3.0"
+                            keyboardType="decimal-pad"
+                            value={waterGoal}
+                            onChangeText={setWaterGoalState}
+                            containerStyle={styles.compactInput}
+                        />
+                        <Text style={styles.unitText}>Liters/Day</Text>
+                    </View>
+                </View>
+            </View>
+        </View>
+
+        {/* Weekly Stats Section */}
+        <View style={styles.statsContainer}>
+            <Text style={styles.sectionTitle}>Weekly History</Text>
+            <View style={styles.chartContainer}>
+                {Object.entries(weeklyData).map(([date, amount]) => {
+                   const height = Math.min((amount / parseFloat(waterGoal)) * 100, 100);
+                   return (
+                    <View key={date} style={styles.chartBarWrapper}>
+                        <View style={styles.barBackground}>
+                            <View style={[styles.barFill, { height: `${height}%`, backgroundColor: height >= 100 ? '#10b981' : '#3b82f6' }]} />
+                        </View>
+                        <Text style={styles.barLabel}>{getDayName(date)}</Text>
+                    </View>
+                   );
+                })}
+            </View>
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -214,181 +198,118 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    backgroundColor: '#fff',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  progressCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  progressContainer: {
-    alignItems: 'center',
-  },
-  progressBar: {
-    width: '100%',
-    height: 20,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3b82f6',
-    borderRadius: 10,
-  },
-  progressText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  quickAddCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  quickAddGrid: {
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  saveActionText: { color: '#3b82f6', fontWeight: '700', fontSize: 16 },
+  content: { flex: 1, backgroundColor: '#f8fafc' },
+  
+  heroSection: {
+    height: 280,
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 12,
-  },
-  quickAddButton: {
-    flex: 1,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
-    gap: 8,
-  },
-  quickAddText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3b82f6',
-  },
-  goalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  saveButton: {
-    marginTop: 12,
-  },
-  reminderCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  reminderHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginBottom: 24,
+    overflow: 'hidden',
   },
-  reminderSubtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  weeklyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  weeklyGrid: {
+  intakeDisplay: { zIndex: 2 },
+  intakeValue: { fontSize: 64, fontWeight: '900', color: '#1e293b' },
+  intakeUnit: { fontSize: 18, color: '#64748b', marginTop: -8, fontWeight: '500' },
+  progressPill: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 200,
-    gap: 8,
-  },
-  weeklyItem: {
-    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 16,
+    alignSelf: 'flex-start',
   },
-  weeklyDay: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  weeklyBarContainer: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+  progressPercent: { marginLeft: 6, fontSize: 14, fontWeight: '600', color: '#3b82f6' },
+  
+  mainProgressBarContainer: {
+    width: 60,
+    height: '70%',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 30,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  weeklyBar: {
+  mainProgressBarFill: {
     width: '100%',
     backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    minHeight: 4,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
   },
-  weeklyAmount: {
-    fontSize: 11,
-    color: '#374151',
-    fontWeight: '600',
+
+  actionGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    gap: 16,
+    marginBottom: 24,
   },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  actionLabel: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+
+  settingsCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 24,
+  },
+  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  settingTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
+  settingSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
+  divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 16 },
+  goalInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+  compactInput: { width: 80, marginBottom: 0 },
+  unitText: { marginLeft: 10, color: '#64748b', fontWeight: '600' },
+
+  statsContainer: { paddingHorizontal: 24, marginBottom: 40 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b', marginBottom: 20 },
+  chartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 140,
+  },
+  chartBarWrapper: { alignItems: 'center', flex: 1 },
+  barBackground: {
+    width: 12,
+    height: 100,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: { width: '100%', borderRadius: 10 },
+  barLabel: { marginTop: 10, fontSize: 12, fontWeight: '700', color: '#94a3b8' },
 });
 
 export default WaterIntakeScreen;
-

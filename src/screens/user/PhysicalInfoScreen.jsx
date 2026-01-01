@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,37 +6,31 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
-import { FormTextInput } from '../../components/FormTextInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { upsertProfile } from '../../api/services/profileService';
-import { getReadableError } from '../../utils/apiError';
+
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+const ITEM_HEIGHT = 60; // Increased for better touch targets
 
 const PhysicalInfoScreen = ({ navigation, route }) => {
   const isEditMode = route.params?.isEditing || route.params?.editMode || false;
   const existingProfile = route.params?.userProfile || {};
   const personalInfo = route.params?.personalInfo || {};
 
-  // Convert from backend format (weightKg, heightCm) to display format
   const getDisplayWeight = () => {
-    if (existingProfile?.weightKg) {
-      return existingProfile.weightKg.toString();
-    }
-    if (existingProfile?.weight) {
-      return existingProfile.weight.toString();
-    }
+    if (existingProfile?.weightKg) return existingProfile.weightKg.toString();
+    if (existingProfile?.weight) return existingProfile.weight.toString();
     return '';
   };
 
   const getDisplayHeight = () => {
-    if (existingProfile?.heightCm) {
-      return existingProfile.heightCm.toString();
-    }
-    if (existingProfile?.height) {
-      return existingProfile.height.toString();
-    }
+    if (existingProfile?.heightCm) return existingProfile.heightCm.toString();
+    if (existingProfile?.height) return existingProfile.height.toString();
     return '';
   };
 
@@ -48,83 +42,109 @@ const PhysicalInfoScreen = ({ navigation, route }) => {
   });
 
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerType, setPickerType] = useState(null); 
+  const [pickerValue, setPickerValue] = useState('');
+  const [pickerUnit, setPickerUnit] = useState('');
+
+  const scrollViewRef = useRef(null);
 
   const calculateBMI = (weight, height, weightUnit, heightUnit) => {
     let weightKg = parseFloat(weight);
     let heightM = parseFloat(height);
+    if (weightUnit === 'lbs') weightKg *= 0.453592;
+    if (heightUnit === 'ft') heightM *= 0.3048;
+    else if (heightUnit === 'in') heightM *= 0.0254;
+    else if (heightUnit === 'cm') heightM /= 100;
 
-    // Convert to metric if needed
-    if (weightUnit === 'lbs') {
-      weightKg = weightKg * 0.453592;
-    }
-    if (heightUnit === 'ft') {
-      heightM = heightM * 0.3048;
-    } else if (heightUnit === 'in') {
-      heightM = heightM * 0.0254;
-    } else if (heightUnit === 'cm') {
-      heightM = heightM / 100;
-    }
-
-    if (weightKg > 0 && heightM > 0) {
-      return weightKg / (heightM * heightM);
-    }
+    if (weightKg > 0 && heightM > 0) return weightKg / (heightM * heightM);
     return null;
   };
 
   const getBMICategory = (bmi) => {
-    if (bmi < 18.5) return { label: 'Underweight', color: '#3b82f6' };
-    if (bmi < 25) return { label: 'Normal', color: '#10b981' };
-    if (bmi < 30) return { label: 'Overweight', color: '#f59e0b' };
-    return { label: 'Obese', color: '#ef4444' };
+    if (bmi < 18.5) return { label: 'Underweight', color: '#60A5FA' };
+    if (bmi < 25) return { label: 'Healthy', color: '#10B981' };
+    if (bmi < 30) return { label: 'Overweight', color: '#F59E0B' };
+    return { label: 'Obese', color: '#EF4444' };
   };
 
-  const validate = () => {
-    const newErrors = {};
-
-    const weight = parseFloat(formData.weight);
-    if (!formData.weight.trim() || isNaN(weight) || weight <= 0 || weight > 500) {
-      newErrors.weight = 'Please enter a valid weight';
+  const handleOpenPicker = (type) => {
+    setPickerType(type);
+    if (type === 'weight') {
+      setPickerValue(formData.weight || '70');
+      setPickerUnit(formData.weightUnit);
+    } else {
+      setPickerValue(formData.height || '170');
+      setPickerUnit(formData.heightUnit);
     }
+    setShowPicker(true);
+  };
 
-    const height = parseFloat(formData.height);
-    if (!formData.height.trim() || isNaN(height) || height <= 0 || height > 300) {
-      newErrors.height = 'Please enter a valid height';
+  const handlePickerConfirm = () => {
+    if (pickerType === 'weight') {
+      setFormData((prev) => ({ ...prev, weight: pickerValue, weightUnit: pickerUnit }));
+      setErrors((prev) => ({ ...prev, weight: '' }));
+    } else {
+      setFormData((prev) => ({ ...prev, height: pickerValue, heightUnit: pickerUnit }));
+      setErrors((prev) => ({ ...prev, height: '' }));
     }
+    setShowPicker(false);
+  };
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const generatePickerItems = (type) => {
+    const items = [];
+    const range = type === 'weight' ? [30, 200] : [100, 250];
+    for (let i = range[0]; i <= range[1]; i += 0.5) items.push(i.toFixed(1));
+    return items;
+  };
+
+  const pickerItems = generatePickerItems(pickerType);
+
+  const scrollToValue = (value) => {
+    const index = pickerItems.indexOf(value);
+    if (index !== -1 && scrollViewRef.current) {
+      const offset = index * ITEM_HEIGHT - (250 / 2 - ITEM_HEIGHT / 2);
+      scrollViewRef.current.scrollTo({ y: offset, animated: false });
+    }
+  };
+
+  useEffect(() => {
+    if (showPicker && pickerValue && pickerItems.length > 0) {
+      setTimeout(() => scrollToValue(pickerValue), 100);
+    }
+  }, [showPicker, pickerType]);
+
+  const handleScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const index = Math.round(y / ITEM_HEIGHT);
+    const selected = pickerItems[index];
+    if (selected && selected !== pickerValue) setPickerValue(selected);
   };
 
   const handleNext = () => {
-    if (!validate()) {
-      Alert.alert('Validation Error', 'Please enter valid physical information.');
+    const weightVal = parseFloat(formData.weight);
+    const heightVal = parseFloat(formData.height);
+
+    if (!formData.weight || isNaN(weightVal) || !formData.height || isNaN(heightVal)) {
+      Alert.alert('Validation Error', 'Please select both height and weight.');
       return;
     }
 
-    let weightKg = parseFloat(formData.weight);
-    let heightCm = parseFloat(formData.height);
+    let weightKg = weightVal;
+    let heightCm = heightVal;
+    if (formData.weightUnit === 'lbs') weightKg *= 0.453592;
+    if (formData.heightUnit === 'ft') heightCm *= 30.48;
+    else if (formData.heightUnit === 'in') heightCm *= 2.54;
 
-    // Convert to metric units (backend expects kg and cm)
-    if (formData.weightUnit === 'lbs') {
-      weightKg = weightKg * 0.453592;
-    }
-    
-    if (formData.heightUnit === 'ft') {
-      heightCm = heightCm * 30.48;
-    } else if (formData.heightUnit === 'in') {
-      heightCm = heightCm * 2.54;
-    }
-    // If already in cm, no conversion needed
-
-    const bmi = calculateBMI(parseFloat(formData.weight), parseFloat(formData.height), formData.weightUnit, formData.heightUnit);
+    const bmi = calculateBMI(weightVal, heightVal, formData.weightUnit, formData.heightUnit);
     const bmiCategory = bmi ? getBMICategory(bmi) : null;
 
     const physicalInfo = {
       weight: weightKg,
       height: heightCm,
-      weightKg: Math.round(weightKg * 10) / 10, // Round to 1 decimal
-      heightCm: Math.round(heightCm * 10) / 10, // Round to 1 decimal
+      weightKg: Math.round(weightKg * 10) / 10,
+      heightCm: Math.round(heightCm * 10) / 10,
       originalWeight: formData.weight,
       originalHeight: formData.height,
       weightUnit: formData.weightUnit,
@@ -133,155 +153,128 @@ const PhysicalInfoScreen = ({ navigation, route }) => {
       bmiCategory: bmiCategory?.label || null,
     };
 
-    // Pass data forward via route params (old app flow)
-    if (isEditMode) {
-      const updatedProfile = {
-        ...existingProfile,
-        physicalInfo,
-      };
-      navigation.navigate('FitnessGoalsScreen', {
-        userProfile: updatedProfile,
-        personalInfo: personalInfo || existingProfile?.personalInfo,
-        physicalInfo,
-        isEditing: true,
-        editMode: true,
-      });
-    } else {
-      navigation.navigate('FitnessGoalsScreen', {
-        userProfile: existingProfile,
-        personalInfo,
-        physicalInfo,
-      });
-    }
+    const targetScreen = 'FitnessGoalsScreen';
+    const params = isEditMode 
+      ? { userProfile: { ...existingProfile, physicalInfo }, personalInfo: personalInfo || existingProfile?.personalInfo, physicalInfo, isEditing: true, editMode: true }
+      : { userProfile: existingProfile, personalInfo, physicalInfo };
+
+    navigation.navigate(targetScreen, params);
   };
 
-  const bmi = calculateBMI(
-    formData.weight,
-    formData.height,
-    formData.weightUnit,
-    formData.heightUnit
-  );
-  const bmiCategory = bmi ? getBMICategory(bmi) : null;
+  const bmi = calculateBMI(formData.weight, formData.height, formData.weightUnit, formData.heightUnit);
+  const bmiCat = bmi ? getBMICategory(bmi) : null;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer noPadding={true} style={{backgroundColor: '#fff'}}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Physical Information</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, {width: '66%'}]} />
+        </View>
+        <View style={{width: 40}} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Your Physical Stats</Text>
-          <Text style={styles.sectionSubtitle}>
-            Enter your current weight and height to calculate your BMI
-          </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Physical Stats</Text>
+        <Text style={styles.subtitle}>These details help us customize your fitness plan and daily caloric needs.</Text>
 
-          <View style={styles.inputRow}>
-            <View style={styles.inputWithUnit}>
-              <FormTextInput
-                label="Weight *"
-                placeholder="70"
-                keyboardType="numeric"
-                value={formData.weight}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, weight: text });
-                  setErrors({ ...errors, weight: '' });
-                }}
-                error={errors.weight}
-              />
-            </View>
-            <View style={styles.unitSelector}>
-              <Text style={styles.unitLabel}>Unit</Text>
-              <View style={styles.unitOptions}>
-                {['kg', 'lbs'].map((unit) => (
-                  <TouchableOpacity
-                    key={unit}
-                    style={[
-                      styles.unitOption,
-                      formData.weightUnit === unit && styles.unitOptionSelected,
-                    ]}
-                    onPress={() => setFormData({ ...formData, weightUnit: unit })}
-                  >
-                    <Text
-                      style={[
-                        styles.unitOptionText,
-                        formData.weightUnit === unit && styles.unitOptionTextSelected,
-                      ]}
-                    >
-                      {unit}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
+        <View style={styles.cardsRow}>
+            <TouchableOpacity 
+                style={[styles.statCard, pickerType === 'height' && showPicker && styles.activeCard]}
+                onPress={() => handleOpenPicker('height')}
+            >
+                <View style={styles.cardIconCircle}>
+                    <Ionicons name="resize" size={20} color="#7C3AED" />
+                </View>
+                <Text style={styles.cardLabel}>Height</Text>
+                <Text style={styles.cardValue}>{formData.height || '--'}</Text>
+                <Text style={styles.cardUnit}>{formData.heightUnit}</Text>
+            </TouchableOpacity>
 
-          <View style={styles.inputRow}>
-            <View style={styles.inputWithUnit}>
-              <FormTextInput
-                label="Height *"
-                placeholder="175"
-                keyboardType="numeric"
-                value={formData.height}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, height: text });
-                  setErrors({ ...errors, height: '' });
-                }}
-                error={errors.height}
-              />
-            </View>
-            <View style={styles.unitSelector}>
-              <Text style={styles.unitLabel}>Unit</Text>
-              <View style={styles.unitOptions}>
-                {['cm', 'ft', 'in'].map((unit) => (
-                  <TouchableOpacity
-                    key={unit}
-                    style={[
-                      styles.unitOption,
-                      formData.heightUnit === unit && styles.unitOptionSelected,
-                    ]}
-                    onPress={() => setFormData({ ...formData, heightUnit: unit })}
-                  >
-                    <Text
-                      style={[
-                        styles.unitOptionText,
-                        formData.heightUnit === unit && styles.unitOptionTextSelected,
-                      ]}
-                    >
-                      {unit}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {bmi && bmiCategory && (
-            <View style={styles.bmiCard}>
-              <View style={styles.bmiHeader}>
-                <Ionicons name="analytics-outline" size={24} color={bmiCategory.color} />
-                <Text style={styles.bmiTitle}>Your BMI</Text>
-              </View>
-              <Text style={[styles.bmiValue, { color: bmiCategory.color }]}>
-                {bmi.toFixed(1)}
-              </Text>
-              <View style={[styles.bmiBadge, { backgroundColor: `${bmiCategory.color}20` }]}>
-                <Text style={[styles.bmiBadgeText, { color: bmiCategory.color }]}>
-                  {bmiCategory.label}
-                </Text>
-              </View>
-            </View>
-          )}
+            <TouchableOpacity 
+                style={[styles.statCard, pickerType === 'weight' && showPicker && styles.activeCard]}
+                onPress={() => handleOpenPicker('weight')}
+            >
+                <View style={styles.cardIconCircle}>
+                    <Ionicons name="speedometer-outline" size={20} color="#7C3AED" />
+                </View>
+                <Text style={styles.cardLabel}>Weight</Text>
+                <Text style={styles.cardValue}>{formData.weight || '--'}</Text>
+                <Text style={styles.cardUnit}>{formData.weightUnit}</Text>
+            </TouchableOpacity>
         </View>
+
+        {bmi && (
+          <View style={[styles.bmiSection, { borderColor: bmiCat.color + '40' }]}>
+            <View>
+                <Text style={styles.bmiLabel}>Body Mass Index (BMI)</Text>
+                <Text style={[styles.bmiStatus, { color: bmiCat.color }]}>{bmiCat.label}</Text>
+            </View>
+            <Text style={[styles.bmiBigValue, { color: bmiCat.color }]}>{bmi.toFixed(1)}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton title="Continue" onPress={handleNext} loading={false} />
+        <PrimaryButton 
+            title="Continue" 
+            onPress={handleNext} 
+            disabled={!formData.weight || !formData.height}
+        />
       </View>
+
+      <Modal animationType="fade" transparent visible={showPicker} onRequestClose={() => setShowPicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select {pickerType}</Text>
+              <TouchableOpacity onPress={handlePickerConfirm} style={styles.doneBtn}>
+                <Text style={styles.doneBtnText}>Set Value</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.pickerWrapper}>
+              <View style={styles.pickerMain}>
+                  <ScrollView
+                    ref={scrollViewRef}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    snapToInterval={ITEM_HEIGHT}
+                    decelerationRate="fast"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingVertical: 100 }}
+                  >
+                    {pickerItems.map((item, idx) => {
+                      const isSelected = pickerValue === item;
+                      return (
+                        <View key={idx} style={styles.pickerItem}>
+                          <Text style={[styles.pickerText, isSelected && styles.pickerTextSelected]}>
+                            {item}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                  <View style={styles.indicatorLine} pointerEvents="none" />
+              </View>
+
+              <View style={styles.unitColumn}>
+                {(pickerType === 'weight' ? ['kg', 'lbs'] : ['cm', 'ft']).map((u) => (
+                  <TouchableOpacity 
+                    key={u} 
+                    onPress={() => setPickerUnit(u)}
+                    style={[styles.unitBtn, pickerUnit === u && styles.unitBtnActive]}
+                  >
+                    <Text style={[styles.unitBtnText, pickerUnit === u && styles.unitBtnTextActive]}>{u}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 };
@@ -291,132 +284,216 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 10 : 40,
+    height: 100,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
+  progressContainer: {
     flex: 1,
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 20,
+    borderRadius: 3,
   },
-  formContainer: {
-    padding: 20,
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#7C3AED',
+    borderRadius: 3,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
     color: '#111827',
-    marginBottom: 8,
+    marginTop: 10,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    lineHeight: 24,
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  cardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 24,
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  inputWithUnit: {
-    flex: 2,
-  },
-  unitSelector: {
-    flex: 1,
-    marginTop: 24,
-  },
-  unitLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  unitOptions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  unitOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-
-  },
-  unitOptionSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#E8F0FE',
-  },
-  unitOptionText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  unitOptionTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  bmiCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+  statCard: {
+    width: (screenWidth - 64) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 20,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginTop: 8,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    ...Platform.select({
+        ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+        android: { elevation: 2 }
+    })
   },
-  bmiHeader: {
+  activeCard: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#F5F3FF',
+  },
+  cardIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  cardLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  cardValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 4,
+  },
+  cardUnit: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  bmiSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
   },
-  bmiTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  bmiValue: {
-    fontSize: 48,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  bmiBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  bmiBadgeText: {
+  bmiLabel: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#6B7280',
+  },
+  bmiStatus: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  bmiBigValue: {
+    fontSize: 42,
+    fontWeight: '800',
   },
   footer: {
-    padding: 20,
-    backgroundColor: '#ffffff',
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    backgroundColor: '#FFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    textTransform: 'capitalize',
+  },
+  doneBtn: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  doneBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  pickerWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    height: 250,
+  },
+  pickerMain: {
+    flex: 1,
+    position: 'relative',
+  },
+  indicatorLine: {
+    position: 'absolute',
+    top: 250 / 2 - ITEM_HEIGHT / 2,
+    height: ITEM_HEIGHT,
+    width: '100%',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderBottomWidth: 1,
+    borderColor: '#7C3AED20',
+    backgroundColor: '#7C3AED05',
+  },
+  pickerItem: {
+    height: ITEM_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerText: {
+    fontSize: 22,
+    color: '#9CA3AF',
+  },
+  pickerTextSelected: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#7C3AED',
+  },
+  unitColumn: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  unitBtn: {
+    width: 60,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitBtnActive: {
+    backgroundColor: '#7C3AED',
+  },
+  unitBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  unitBtnTextActive: {
+    color: '#FFF',
   },
 });
 
 export default PhysicalInfoScreen;
-
-
