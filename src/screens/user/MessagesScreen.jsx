@@ -19,8 +19,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useBootstrap } from '../../context/BootstrapContext';
 import { useSocket } from '../../context/SocketContext';
 import { getConversations } from '../../api/services/messageService';
+import { getUserRooms, getChatMessages } from '../../api/services/userCommunityChatService';
 import { getReadableError } from '../../utils/apiError';
 import { ENV } from '../../config/env';
+import communityChatSocketService from '../../services/communityChatSocketService';
 
 const MessagesScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -47,13 +49,14 @@ const MessagesScreen = ({ navigation }) => {
     return date.toLocaleDateString();
   };
 
-  // Load conversations
+  // Load conversations (both regular and community chats)
   const loadConversations = useCallback(async (showLoading = true, useBootstrap = false) => {
     try {
       if (showLoading) setLoading(true);
       
       let conversationsData = [];
       
+      // Load regular conversations
       if (useBootstrap && bootstrapData?.messages?.conversations) {
         conversationsData = bootstrapData.messages.conversations;
       } else {
@@ -64,6 +67,73 @@ const MessagesScreen = ({ navigation }) => {
       if (!Array.isArray(conversationsData)) {
         conversationsData = [];
       }
+      
+      // Load community chat rooms
+      try {
+        const communityRooms = await getUserRooms();
+        if (Array.isArray(communityRooms) && communityRooms.length > 0) {
+          // Transform community rooms into conversation-like objects
+          const communityConversations = await Promise.all(
+            communityRooms.map(async (room) => {
+              try {
+                // Get last message for the room
+                const messagesData = await getChatMessages(room.id || room._id, { limit: 1, offset: 0 });
+                const lastMessage = messagesData?.messages?.[0] || null;
+                
+                return {
+                  id: `community-${room.id || room._id}`,
+                  partnerId: room.id || room._id,
+                  type: 'community',
+                  partner: {
+                    username: room.name || 'Community Chat',
+                    profile: {
+                      fullName: room.name || 'Community Chat',
+                      avatarUrl: room.avatarUrl || null,
+                    },
+                  },
+                  room: room,
+                  lastMessage: lastMessage ? {
+                    content: lastMessage.content || lastMessage.message,
+                    senderId: lastMessage.senderId || lastMessage.userId,
+                    createdAt: lastMessage.createdAt || lastMessage.created_at,
+                  } : null,
+                  unreadCount: 0, // TODO: Implement unread count for community chats
+                };
+              } catch (error) {
+                console.error(`Error loading messages for room ${room.id}:`, error);
+                return {
+                  id: `community-${room.id || room._id}`,
+                  partnerId: room.id || room._id,
+                  type: 'community',
+                  partner: {
+                    username: room.name || 'Community Chat',
+                    profile: {
+                      fullName: room.name || 'Community Chat',
+                      avatarUrl: room.avatarUrl || null,
+                    },
+                  },
+                  room: room,
+                  lastMessage: null,
+                  unreadCount: 0,
+                };
+              }
+            })
+          );
+          
+          // Combine regular conversations with community chats
+          conversationsData = [...conversationsData, ...communityConversations];
+        }
+      } catch (error) {
+        console.error('Error loading community rooms:', error);
+        // Don't fail the whole load if community rooms fail
+      }
+      
+      // Sort by last message time (most recent first)
+      conversationsData.sort((a, b) => {
+        const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
       
       setConversations(conversationsData);
     } catch (error) {
@@ -90,10 +160,19 @@ const MessagesScreen = ({ navigation }) => {
 
   // Handle conversation press
   const handleConversationPress = (conversation) => {
-    navigation.navigate('ChatScreen', {
-      userId: conversation.partnerId,
-      partner: conversation.partner,
-    });
+    if (conversation.type === 'community') {
+      // Navigate to community chat
+      navigation.navigate('CommunityChatScreen', {
+        roomId: conversation.room?.id || conversation.room?._id || conversation.partnerId,
+        room: conversation.room,
+      });
+    } else {
+      // Navigate to regular chat
+      navigation.navigate('ChatScreen', {
+        userId: conversation.partnerId,
+        partner: conversation.partner,
+      });
+    }
   };
 
   // Load conversations on mount and when screen is focused
@@ -147,6 +226,67 @@ const MessagesScreen = ({ navigation }) => {
     };
   }, [socketService, user?.id]);
 
+  // Listen for community chat messages
+  useEffect(() => {
+    // Connect to community chat socket
+    communityChatSocketService.connect();
+
+    const handleCommunityMessage = (message) => {
+      setConversations((prev) => {
+        const updated = [...prev];
+        const roomId = message.roomId || message.room?.id;
+        const index = updated.findIndex((c) => 
+          c.type === 'community' && (c.room?.id === roomId || c.room?._id === roomId || c.partnerId === roomId)
+        );
+        
+        if (index !== -1) {
+          updated[index] = {
+            ...updated[index],
+            lastMessage: {
+              content: message.content || message.message,
+              senderId: message.senderId || message.userId,
+              createdAt: message.createdAt || message.created_at,
+            },
+            unreadCount: message.senderId !== user?.id ? (updated[index].unreadCount || 0) + 1 : 0,
+          };
+          // Move to top
+          const [moved] = updated.splice(index, 1);
+          updated.unshift(moved);
+        } else if (roomId) {
+          // If room not in list, add it
+          updated.unshift({
+            id: `community-${roomId}`,
+            partnerId: roomId,
+            type: 'community',
+            partner: {
+              username: message.room?.name || 'Community Chat',
+              profile: {
+                fullName: message.room?.name || 'Community Chat',
+              },
+            },
+            room: message.room || { id: roomId },
+            lastMessage: {
+              content: message.content || message.message,
+              senderId: message.senderId || message.userId,
+              createdAt: message.createdAt || message.created_at,
+            },
+            unreadCount: message.senderId !== user?.id ? 1 : 0,
+          });
+        }
+        
+        return updated;
+      });
+    };
+
+    const unsubscribeNewMessage = communityChatSocketService.onNewMessage(handleCommunityMessage);
+    const unsubscribeMessageSent = communityChatSocketService.onMessageSent(handleCommunityMessage);
+
+    return () => {
+      unsubscribeNewMessage();
+      unsubscribeMessageSent();
+    };
+  }, [user?.id]);
+
   const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
 
   return (
@@ -183,7 +323,7 @@ const MessagesScreen = ({ navigation }) => {
             </View>
             <Text style={styles.activeName}>You</Text>
           </TouchableOpacity>
-          {conversations.slice(0, 5).map((conv, i) => (
+          {conversations.filter(conv => conv.type !== 'community').slice(0, 5).map((conv, i) => (
             <TouchableOpacity key={i} style={styles.activeUserItem}>
               <View style={styles.activeAvatarWrapper}>
                 <Image 
@@ -193,7 +333,7 @@ const MessagesScreen = ({ navigation }) => {
                 <View style={styles.onlineDot} />
               </View>
               <Text style={styles.activeName} numberOfLines={1}>
-                {conv.partner?.username.split(' ')[0]}
+                {conv.partner?.username?.split(' ')[0] || conv.partner?.profile?.fullName?.split(' ')[0] || 'User'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -227,10 +367,16 @@ const MessagesScreen = ({ navigation }) => {
                 activeOpacity={0.7}
               >
                 <View style={styles.avatarContainer}>
-                  <Image
-                    source={{ uri: partner?.profile?.avatarUrl || 'https://via.placeholder.com/150' }}
-                    style={styles.chatAvatar}
-                  />
+                  {conversation.type === 'community' ? (
+                    <View style={[styles.chatAvatar, styles.communityAvatar]}>
+                      <Ionicons name="people" size={24} color="#6366f1" />
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: partner?.profile?.avatarUrl || 'https://via.placeholder.com/150' }}
+                      style={styles.chatAvatar}
+                    />
+                  )}
                   {unread && <View style={styles.unreadPing} />}
                 </View>
 
@@ -249,8 +395,11 @@ const MessagesScreen = ({ navigation }) => {
                       style={[styles.lastMessage, unread && styles.unreadMessageText]} 
                       numberOfLines={1}
                     >
-                      {lastMessage?.senderId === user?.id ? 'You: ' : ''}
-                      {lastMessage?.content || 'Sent an attachment'}
+                      {conversation.type === 'community' 
+                        ? (lastMessage?.senderId === user?.id ? 'You: ' : `${lastMessage?.senderName || 'Someone'}: `)
+                        : (lastMessage?.senderId === user?.id ? 'You: ' : '')
+                      }
+                      {lastMessage?.content || lastMessage?.message || 'Sent an attachment'}
                     </Text>
                     {unread && (
                       <View style={styles.badge}>
@@ -316,6 +465,13 @@ const styles = StyleSheet.create({
   },
   avatarContainer: { position: 'relative' },
   chatAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#f1f5f9' },
+  communityAvatar: { 
+    backgroundColor: '#eef2ff', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#6366f1',
+  },
   unreadPing: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#6366f1', position: 'absolute', top: 0, right: 0, borderWidth: 2, borderColor: '#fff' },
   
   chatInfo: { flex: 1, marginLeft: 15, borderBottomWidth: 1, borderBottomColor: '#f8fafc', paddingBottom: 12 },

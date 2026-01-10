@@ -102,7 +102,7 @@ const UserDashboardScreen = ({ navigation }) => {
           // Don't show error for missing diary entries (404 is expected if no food added yet)
           if (error.message && error.message.includes('authentication')) {
             console.error('Error loading diary entry:', error);
-          } else {
+      } else {
             // Silent fail for missing diary entries
             setDiaryTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 });
           }
@@ -133,7 +133,7 @@ const UserDashboardScreen = ({ navigation }) => {
         console.log('[UserDashboard] HealthKit/Google Fit initialized, using native step tracking');
       } else {
         console.log('[UserDashboard] HealthKit/Google Fit not available, using fallback step tracking');
-        startStepTracking();
+    startStepTracking();
       }
     });
     const interval = setInterval(async () => {
@@ -224,14 +224,14 @@ const UserDashboardScreen = ({ navigation }) => {
             <Text style={styles.userNameText}>{profile?.fullName?.split(' ')[0] || 'Athlete'}</Text>
           </View>
           <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profileHeaderImageContainer}>
-            {profilePhoto ? (
+          {profilePhoto ? (
               <Image source={{ uri: profilePhoto }} style={styles.headerProfilePhoto} />
-            ) : (
-              <View style={styles.profilePhotoPlaceholder}>
+          ) : (
+            <View style={styles.profilePhotoPlaceholder}>
                 <Ionicons name="person" size={20} color="#10b981" />
-              </View>
-            )}
-          </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
         </View>
       </View>
 
@@ -243,7 +243,7 @@ const UserDashboardScreen = ({ navigation }) => {
         <View style={styles.mainContainer}>
           
           {/* Profile Completion - Subtle Banner Style */}
-          {profileCompletion.percentage < 100 && (
+        {profileCompletion.percentage < 100 && (
             <TouchableOpacity style={styles.completionBanner} onPress={handleStartProfileSetup}>
               <Ionicons name="sparkles" size={20} color="#ffffff" />
               <Text style={styles.completionBannerText}>
@@ -282,7 +282,7 @@ const UserDashboardScreen = ({ navigation }) => {
                       {Math.round(stepsProgress)}%
                     </Text>
                     <Text style={styles.circularProgressLabel}>Goal</Text>
-                  </View>
+            </View>
                 </View>
               </View>
             </View>
@@ -294,7 +294,7 @@ const UserDashboardScreen = ({ navigation }) => {
               <Text style={styles.smallLabel}>BMI</Text>
               <Text style={styles.smallValue}>{calculateBMI()}</Text>
               <View style={[styles.indicator, { backgroundColor: '#8b5cf6' }]} />
-            </View>
+              </View>
             <View style={styles.smallMetricCard}>
               <Text style={styles.smallLabel}>Step Goal</Text>
               <Text style={styles.smallValue}>{stepsGoal.toLocaleString()}</Text>
@@ -304,14 +304,14 @@ const UserDashboardScreen = ({ navigation }) => {
               <Text style={styles.smallLabel}>Target Calories</Text>
               <Text style={styles.smallValue}>{profile?.calorieGoals?.dailyCalories || 2000}</Text>
               <View style={[styles.indicator, { backgroundColor: '#f59e0b' }]} />
+              </View>
             </View>
-          </View>
 
           {/* Nutrition Macros Section (Inspired by Screenshot 2) */}
-          <TouchableOpacity 
+            <TouchableOpacity
              style={styles.sectionCard}
              onPress={() => navigation.navigate('CalorieGoalsScreen', { userProfile: profile, isEditing: true, editMode: true })}
-          >
+            >
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Nutrition Breakdown</Text>
               <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
@@ -344,16 +344,16 @@ const UserDashboardScreen = ({ navigation }) => {
 
           {/* Water & Attendance Horizontal Row */}
           <View style={styles.row}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.halfCard, { backgroundColor: '#eff6ff' }]}
               onPress={() => navigation.navigate('WaterIntakeScreen')}
             >
-              <Ionicons name="water" size={24} color="#3b82f6" />
+                <Ionicons name="water" size={24} color="#3b82f6" />
               <Text style={styles.halfCardTitle}>Hydration</Text>
               <Text style={styles.halfCardValue}>{waterIntake.toFixed(1)}L / {waterGoal.toFixed(1)}L</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.halfCard, { backgroundColor: '#f5f3ff' }]}
               onPress={() => navigation.navigate('AttendanceScreen')}
             >
@@ -367,8 +367,8 @@ const UserDashboardScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.footerButton} onPress={handleSettingsPress}>
              <Ionicons name="settings-sharp" size={20} color="#6b7280" />
              <Text style={styles.footerButtonText}>Account Settings</Text>
-          </TouchableOpacity>
-          
+            </TouchableOpacity>
+
         </View>
       </ScrollView>
     </ScreenContainer>

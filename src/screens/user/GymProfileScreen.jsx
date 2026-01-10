@@ -111,9 +111,18 @@ const GymProfileScreen = ({ route, navigation }) => {
 
     try {
       setSubmittingInquiry(true);
+      // Include all user info from Fitsera app for member registration
       await createGymInquiry({
         gymId: gym.id,
-        ...inquiryData,
+        name: inquiryData.name.trim(),
+        email: inquiryData.email.trim() || null,
+        phone: inquiryData.phone.trim() || null,
+        message: inquiryData.message.trim(),
+        source: 'fitsera_app',
+        // Include user info for member registration when enquiry is accepted
+        userId: user?.id || null,
+        username: user?.username || null,
+        globalUserId: user?.globalUserId || null,
       });
       Alert.alert('Success', 'Your inquiry has been sent successfully!');
       setShowInquiryModal(false);
@@ -736,6 +745,8 @@ const styles = StyleSheet.create({
 });
 
 export default GymProfileScreen;
+
+
 
 
 

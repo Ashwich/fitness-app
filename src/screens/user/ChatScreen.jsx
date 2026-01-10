@@ -164,7 +164,19 @@ const ChatScreen = ({ navigation, route }) => {
       const timer = setTimeout(() => {
         loadMessages();
       }, 300);
-      return () => clearTimeout(timer);
+
+      // Periodic refresh as fallback (every 5 seconds) - only when screen is focused
+      const interval = setInterval(() => {
+        // Silently refresh messages in background
+        loadMessages().catch(err => {
+          console.error('[ChatScreen] Error in periodic refresh:', err);
+        });
+      }, 5000); // Check every 5 seconds
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
     }, [loadMessages])
   );
 
@@ -190,48 +202,77 @@ const ChatScreen = ({ navigation, route }) => {
     }
   }, []);
 
-  // Socket listeners for real-time messages
+  // Socket listeners for real-time messages - keep active even when screen is not focused
   useEffect(() => {
-    if (!socketService) return;
+    if (!socketService) {
+      console.log('[ChatScreen] Socket service not available');
+      return;
+    }
+
+    console.log('[ChatScreen] Setting up socket listeners for userId:', userId);
 
     const handleNewMessage = (message) => {
-      // Check if message belongs to this conversation
+      console.log('[ChatScreen] Received message via socket:', message);
+      
+      // Check if message belongs to this conversation - handle different field names
+      const senderId = String(message.senderId || message.sender_id || '');
+      const receiverId = String(message.receiverId || message.receiver_id || '');
+      const currentUserId = String(user?.id || '');
+      const targetUserId = String(userId || '');
+      
       const isRelevantMessage = 
-        (message.senderId === userId && message.receiverId === user?.id) ||
-        (message.senderId === user?.id && message.receiverId === userId);
+        (senderId === targetUserId && receiverId === currentUserId) ||
+        (senderId === currentUserId && receiverId === targetUserId);
+      
+      console.log('[ChatScreen] Message relevance check:', {
+        senderId,
+        receiverId,
+        currentUserId,
+        targetUserId,
+        isRelevantMessage
+      });
       
       if (isRelevantMessage) {
+        console.log('[ChatScreen] Message is relevant, adding to state');
         setMessages((prev) => {
           // Avoid duplicates by checking both id and content+timestamp
           const isDuplicate = prev.some((m) => 
-            m.id === message.id || 
+            (m.id && message.id && String(m.id) === String(message.id)) ||
             (m.content === message.content && 
-             Math.abs(new Date(m.createdAt || m.created_at) - new Date(message.createdAt || message.created_at)) < 1000)
+             Math.abs(new Date(m.createdAt || m.created_at || 0) - new Date(message.createdAt || message.created_at || 0)) < 2000)
           );
           
           if (isDuplicate) {
+            console.log('[ChatScreen] Duplicate message detected, skipping');
             return prev;
           }
           
           // Add new message and sort by timestamp
           const updated = [...prev, message];
-          return updated.sort((a, b) => {
+          const sorted = updated.sort((a, b) => {
             const dateA = new Date(a.createdAt || a.created_at || 0);
             const dateB = new Date(b.createdAt || b.created_at || 0);
             return dateA - dateB;
           });
+          
+          console.log('[ChatScreen] Updated messages count:', sorted.length);
+          return sorted;
         });
         
         // Scroll to bottom
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
+      } else {
+        console.log('[ChatScreen] Message does not belong to this conversation, ignoring');
       }
     };
 
     socketService.on('message', handleNewMessage);
+    console.log('[ChatScreen] Socket listener registered');
 
     return () => {
+      console.log('[ChatScreen] Cleaning up socket listeners');
       socketService.off('message', handleNewMessage);
     };
   }, [socketService, userId, user?.id]);

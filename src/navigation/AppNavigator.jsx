@@ -28,6 +28,7 @@ import GymProfileScreen from '../screens/user/GymProfileScreen';
 import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import AttendanceScreen from '../screens/user/AttendanceScreen';
 import GymReviewsScreen from '../screens/user/GymReviewsScreen';
+import CommunityChatScreen from '../screens/user/CommunityChatScreen';
 import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
@@ -37,6 +38,7 @@ const UserStack = createNativeStackNavigator();
 const HomeStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const DiaryStack = createNativeStackNavigator();
+const GymsStack = createNativeStackNavigator();
 
 const AuthNavigator = () => (
   <AuthStack.Navigator
@@ -94,6 +96,11 @@ const HomeStackNavigator = () => (
       name="GymProfileScreen"
       component={GymProfileScreen}
       options={{ title: 'Gym Profile' }}
+    />
+    <HomeStack.Screen
+      name="CommunityChatScreen"
+      component={CommunityChatScreen}
+      options={{ title: 'Community Chat' }}
     />
   </HomeStack.Navigator>
 );
@@ -208,6 +215,31 @@ const DiaryStackNavigator = () => (
   </DiaryStack.Navigator>
 );
 
+// Gyms Stack - includes GymsScreen, GymProfileScreen, and GymReviewsScreen
+const GymsStackNavigator = () => (
+  <GymsStack.Navigator
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <GymsStack.Screen
+      name="GymsList"
+      component={GymsScreen}
+      options={{ title: 'Gyms' }}
+    />
+    <GymsStack.Screen
+      name="GymProfileScreen"
+      component={GymProfileScreen}
+      options={{ title: 'Gym Profile' }}
+    />
+    <GymsStack.Screen
+      name="GymReviewsScreen"
+      component={GymReviewsScreen}
+      options={{ title: 'Gym Reviews' }}
+    />
+  </GymsStack.Navigator>
+);
+
 const AppTabNavigator = () => (
   <AppTabs.Navigator
     screenOptions={({ route }) => ({
@@ -261,7 +293,7 @@ const AppTabNavigator = () => (
     />
     <AppTabs.Screen 
       name="Gyms" 
-      component={GymsScreen} 
+      component={GymsStackNavigator} 
       options={{ title: 'Gym' }} 
     />
   </AppTabs.Navigator>

@@ -58,6 +58,9 @@ const getNotificationText = (notification) => {
     case 'COMMUNITY_CHAT_REQUEST':
     case 'COMMUNITY_JOIN_REQUEST':
       return `${gymName} invited you to join "${notification.room?.name || 'a community group'}"`;
+    case 'COMMUNITY_CHAT_REQUEST_ACCEPTED':
+    case 'COMMUNITY_CHAT_REQUEST_DECLINED':
+      return notification.message || 'Community group request updated';
     default:
       return notification.message || 'New notification';
   }
@@ -274,10 +277,19 @@ const NotificationsScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await rejectJoinRequest(requestId, roomId);
+              // Update notification to show declined status instead of removing
               setNotifications((prev) =>
-                prev.filter((n) => n.id !== notification.id)
+                prev.map((n) => 
+                  n.id === notification.id 
+                    ? { 
+                        ...n, 
+                        type: 'COMMUNITY_CHAT_REQUEST_DECLINED',
+                        message: `You declined to join "${roomName}"`,
+                        read: true,
+                      }
+                    : n
+                )
               );
-              Alert.alert('Success', 'Join request rejected');
             } catch (error) {
               console.error('Error rejecting join request:', error);
               Alert.alert('Error', getReadableError(error));
@@ -289,12 +301,26 @@ const NotificationsScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await acceptJoinRequest(requestId, roomId);
+              // Update notification to show accepted status instead of removing
               setNotifications((prev) =>
-                prev.filter((n) => n.id !== notification.id)
+                prev.map((n) => 
+                  n.id === notification.id 
+                    ? { 
+                        ...n, 
+                        type: 'COMMUNITY_CHAT_REQUEST_ACCEPTED',
+                        message: `You accepted to join "${roomName}"`,
+                        read: true,
+                      }
+                    : n
+                )
               );
-              Alert.alert('Success', `You've joined "${roomName}"!`);
-              // Optionally navigate to the community chat room
-              // navigation.navigate('CommunityChatScreen', { roomId: notification.roomId });
+              // Navigate to the community chat room
+              setTimeout(() => {
+                navigation.navigate('CommunityChatScreen', { 
+                  roomId: notification.roomId || notification.data?.roomId,
+                  room: notification.room,
+                });
+              }, 500);
             } catch (error) {
               console.error('Error accepting join request:', error);
               Alert.alert('Error', getReadableError(error));
@@ -400,8 +426,18 @@ const NotificationsScreen = ({ navigation }) => {
                               const requestId = notification.requestId || notification.data?.requestId || notification.id;
                               const roomId = notification.roomId || notification.data?.roomId;
                               await rejectJoinRequest(requestId, roomId);
+                              // Update notification to show declined status
                               setNotifications((prev) =>
-                                prev.filter((n) => n.id !== notification.id)
+                                prev.map((n) => 
+                                  n.id === notification.id 
+                                    ? { 
+                                        ...n, 
+                                        type: 'COMMUNITY_CHAT_REQUEST_DECLINED',
+                                        message: `You declined to join "${notification.room?.name || notification.data?.roomName || 'this community group'}"`,
+                                        read: true,
+                                      }
+                                    : n
+                                )
                               );
                             } catch (error) {
                               console.error('Error rejecting join request:', error);
@@ -411,6 +447,13 @@ const NotificationsScreen = ({ navigation }) => {
                         >
                           <Text style={styles.rejectButtonText}>Reject</Text>
                         </TouchableOpacity>
+                      </View>
+                    )}
+                    {(notification.type === 'COMMUNITY_CHAT_REQUEST_ACCEPTED' || notification.type === 'COMMUNITY_CHAT_REQUEST_DECLINED') && (
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusText}>
+                          {notification.type === 'COMMUNITY_CHAT_REQUEST_ACCEPTED' ? '✓ Accepted' : '✗ Declined'}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -573,6 +616,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  statusBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
   },
 });
 

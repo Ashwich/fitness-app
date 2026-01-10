@@ -154,3 +154,72 @@ export const getPendingJoinRequests = async () => {
   }
 };
 
+/**
+ * Get chat messages for a community chat room
+ * @param {string} roomId - Room ID
+ * @param {Object} options - Query options (limit, offset)
+ * @returns {Promise<Object>} Messages response with messages array and total
+ */
+export const getChatMessages = async (roomId, options = {}) => {
+  try {
+    const { limit = 100, offset = 0 } = options;
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit);
+    if (offset) params.append('offset', offset);
+    
+    const queryString = params.toString();
+    const endpoint = `/api/users/community-chat/rooms/${roomId}/messages${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await userCommunityChatClient.get(endpoint);
+    const data = extractData(response);
+    
+    // Handle different response structures
+    if (data?.messages) {
+      return {
+        messages: Array.isArray(data.messages) ? data.messages : [],
+        total: data.total || data.messages.length,
+      };
+    }
+    if (Array.isArray(data)) {
+      return {
+        messages: data,
+        total: data.length,
+      };
+    }
+    return {
+      messages: [],
+      total: 0,
+    };
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.warn('[UserCommunityChat] Messages endpoint not found');
+      return { messages: [], total: 0 };
+    }
+    console.error('[UserCommunityChat] Error fetching chat messages:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send message to a community chat room
+ * @param {string} roomId - Room ID
+ * @param {string} message - Message content
+ * @returns {Promise<Object>} Sent message
+ */
+export const sendChatMessage = async (roomId, message) => {
+  try {
+    if (!roomId || !message) {
+      throw new Error('Room ID and message are required');
+    }
+    
+    const response = await userCommunityChatClient.post('/api/users/community-chat/messages', {
+      roomId,
+      message,
+    });
+    return extractData(response);
+  } catch (error) {
+    console.error('[UserCommunityChat] Error sending chat message:', error);
+    throw error;
+  }
+};
+
