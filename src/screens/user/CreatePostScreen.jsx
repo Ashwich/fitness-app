@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import FilterSelector from '../../components/filters/FilterSelector';
+import { applyFilter, getFilterStyle, getFilterOverlay, getFilterBlendMode } from '../../utils/imageFilters';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { createPost } from '../../api/services/postService';
@@ -27,11 +29,159 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [mediaType, setMediaType] = useState(null);
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('none');
+  const [filteredImageUri, setFilteredImageUri] = useState(null);
   
   const isFromTab = !route?.params;
 
-  // ... (Keep your existing pickImage, takePhoto, showMediaOptions, handlePost logic)
-  // [Logic remains the same as provided in your original code]
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your photo library to select photos or videos.'
+        );
+        return;
+      }
+
+      // Use MediaType if available, otherwise fallback to MediaTypeOptions
+      const getMediaTypes = () => {
+        if (ImagePicker.MediaType) {
+          return [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos];
+        }
+        if (ImagePicker.MediaTypeOptions) {
+          return ImagePicker.MediaTypeOptions.All;
+        }
+        return 'all'; // Fallback to string value
+      };
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: getMediaTypes(),
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setMedia(asset.uri);
+        setFilteredImageUri(asset.uri);
+        setMediaType(asset.type === 'video' ? 'video' : 'image');
+        setSelectedFilter('none');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please check your permissions.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your camera to take photos or videos.'
+        );
+        return;
+      }
+
+      // Use MediaType if available, otherwise fallback to MediaTypeOptions
+      const getMediaTypes = () => {
+        if (ImagePicker.MediaType) {
+          return [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos];
+        }
+        if (ImagePicker.MediaTypeOptions) {
+          return ImagePicker.MediaTypeOptions.All;
+        }
+        return 'all'; // Fallback to string value
+      };
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: getMediaTypes(),
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setMedia(asset.uri);
+        setFilteredImageUri(asset.uri);
+        setMediaType(asset.type === 'video' ? 'video' : 'image');
+        setSelectedFilter('none');
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please check your permissions.');
+    }
+  };
+
+  const handleFilterSelect = async (filterId) => {
+    if (mediaType === 'video') {
+      Alert.alert('Info', 'Filters are only available for images');
+      return;
+    }
+
+    setSelectedFilter(filterId);
+    // Filters are applied via overlay, so no need for async processing
+    // Just update the filter selection
+    if (filterId === 'none') {
+      setFilteredImageUri(media);
+    } else {
+      // Keep original image, overlay will handle the filter effect
+      setFilteredImageUri(media);
+    }
+  };
+
+  const handlePost = async () => {
+    if (!media || !caption.trim()) {
+      Alert.alert('Error', 'Please add a caption and media to your post.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Use filtered image if filter is applied, otherwise use original
+      const mediaToUpload = filteredImageUri && selectedFilter !== 'none' 
+        ? filteredImageUri 
+        : media;
+
+      // Upload media first
+      const uploadResult = await uploadPostMedia(mediaToUpload, mediaType);
+      const mediaUrl = uploadResult.url;
+
+      // Create post
+      await createPost({
+        caption,
+        mediaUrl,
+        mediaType,
+      });
+
+      Alert.alert('Success', 'Post created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setMedia(null);
+            setFilteredImageUri(null);
+            setMediaType(null);
+            setCaption('');
+            setSelectedFilter('none');
+            if (isFromTab) {
+              navigation.navigate('Home');
+            } else {
+              navigation.goBack();
+            }
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      Alert.alert('Error', getReadableError(error) || 'Failed to create post');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const hashtags = caption.match(/#[\w]+/g) || [];
 
@@ -110,19 +260,55 @@ const CreatePostScreen = ({ navigation, route }) => {
           {/* Media Section */}
           <View style={styles.mediaWrapper}>
             {media ? (
-              <View style={styles.previewContainer}>
-                {mediaType === 'video' ? (
-                  <View style={styles.videoPlaceholder}>
-                    <MaterialCommunityIcons name="video" size={48} color="#fff" />
-                    <Text style={styles.videoPlaceholderText}>Video Attached</Text>
+              <>
+                <View style={styles.previewContainer}>
+                  {mediaType === 'video' ? (
+                    <View style={styles.videoPlaceholder}>
+                      <MaterialCommunityIcons name="video" size={48} color="#fff" />
+                      <Text style={styles.videoPlaceholderText}>Video Attached</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.imageWrapper}>
+                      <Image 
+                        source={{ uri: filteredImageUri || media }} 
+                        style={[
+                          styles.imagePreview,
+                          getFilterStyle(selectedFilter),
+                        ]} 
+                      />
+                      {/* Filter Overlay */}
+                      {selectedFilter !== 'none' && (
+                        <View 
+                          style={[
+                            styles.filterOverlay,
+                            { backgroundColor: getFilterOverlay(selectedFilter) }
+                          ]} 
+                        />
+                      )}
+                    </View>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.removeMediaBtn} 
+                    onPress={() => {
+                      setMedia(null);
+                      setFilteredImageUri(null);
+                      setSelectedFilter('none');
+                    }}
+                  >
+                    <Ionicons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                {/* Filter Selector for Images */}
+                {mediaType === 'image' && media && (
+                  <View style={styles.filterSection}>
+                    <FilterSelector
+                      imageUri={media}
+                      selectedFilter={selectedFilter}
+                      onFilterSelect={handleFilterSelect}
+                    />
                   </View>
-                ) : (
-                  <Image source={{ uri: media }} style={styles.imagePreview} />
                 )}
-                <TouchableOpacity style={styles.removeMediaBtn} onPress={() => setMedia(null)}>
-                  <Ionicons name="close" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              </>
             ) : (
               <View style={styles.emptyMediaActions}>
                 <TouchableOpacity style={styles.actionSquare} onPress={pickImage}>
@@ -204,8 +390,30 @@ const styles = StyleSheet.create({
   tagText: { color: '#6366f1', fontSize: 13, fontWeight: '600' },
 
   mediaWrapper: { padding: 16 },
+  filterSection: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
   previewContainer: { borderRadius: 16, overflow: 'hidden', position: 'relative' },
+  imageWrapper: { position: 'relative', borderRadius: 16, overflow: 'hidden' },
   imagePreview: { width: '100%', height: 300, borderRadius: 16, backgroundColor: '#f8fafc' },
+  filterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  filterLoading: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 10,
+  },
   videoPlaceholder: { width: '100%', height: 200, backgroundColor: '#1e293b', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   videoPlaceholderText: { color: '#fff', marginTop: 8, fontWeight: '600' },
   removeMediaBtn: { 

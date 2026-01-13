@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import { upsertProfile } from '../../api/services/profileService';
 import { getUserById } from '../../api/services/userProfileService';
 import { getUserPosts } from '../../api/services/postService';
@@ -30,6 +31,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UserProfileScreen = ({ navigation, route }) => {
   const { user, logout } = useAuth();
+  const { socketService } = useSocket();
   const userId = route?.params?.userId || user?.id;
   const isOwnProfile = !route?.params?.userId || route?.params?.userId === user?.id;
 
@@ -50,6 +52,30 @@ const UserProfileScreen = ({ navigation, route }) => {
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Listen for real-time like updates via socket.io
+  useEffect(() => {
+    if (!socketService) return;
+
+    const unsubscribe = socketService.on('post-like-updated', (likeData) => {
+      // Update post with real-time like data
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => {
+          if (post.id === likeData.postId) {
+            return {
+              ...post,
+              likes: likeData.likeCount || post.likes,
+            };
+          }
+          return post;
+        })
+      );
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [socketService]);
 
   // Refresh profile when screen comes into focus (e.g., after posting)
   useFocusEffect(
@@ -140,6 +166,8 @@ const UserProfileScreen = ({ navigation, route }) => {
             type: post.mediaType,
             url: mediaUrl,
             views: post.viewsCount || post.views || 0,
+            likes: post.likesCount || post.likes?.length || 0,
+            comments: post.commentsCount || post.comments?.length || 0,
           };
         });
         
@@ -183,6 +211,8 @@ const UserProfileScreen = ({ navigation, route }) => {
             type: post.mediaType,
             url: mediaUrl,
             views: post.viewsCount || post.views || 0,
+            likes: post.likesCount || post.likes?.length || 0,
+            comments: post.commentsCount || post.comments?.length || 0,
           };
         });
         
@@ -275,11 +305,18 @@ const UserProfileScreen = ({ navigation, route }) => {
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // Fix deprecated MediaTypeOptions
-      const MediaType = ImagePicker.MediaType || ImagePicker.MediaTypeOptions;
-
+      // Use MediaType if available, otherwise fallback to MediaTypeOptions
+      const getMediaType = () => {
+        if (ImagePicker.MediaType) {
+          return ImagePicker.MediaType.Images;
+        }
+        if (ImagePicker.MediaTypeOptions) {
+          return ImagePicker.MediaTypeOptions.Images;
+        }
+        return 'images'; // Fallback to string value
+      };
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: MediaType.Images,
+        mediaTypes: getMediaType(),
         allowsEditing: true,
         aspect: [16, 9], // Banner aspect ratio
         quality: 0.8,
@@ -546,6 +583,23 @@ const UserProfileScreen = ({ navigation, route }) => {
           </View>
         )}
 
+        {/* Saved Posts Section - Only for own profile */}
+        {isOwnProfile && (
+          <View style={styles.photosSection}>
+            <View style={styles.photosSectionHeader}>
+              <Text style={styles.photosSectionTitle}>Saved Posts</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('SavedPostsScreen')}>
+                <Text style={styles.seeAllLink}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.emptyPosts}>
+              <Ionicons name="bookmark-outline" size={48} color="#9ca3af" />
+              <Text style={styles.emptyPostsText}>No saved posts yet</Text>
+              <Text style={styles.emptyPostsSubtext}>Posts you save will appear here</Text>
+            </View>
+          </View>
+        )}
+
         {/* Photos Section */}
         <View style={styles.photosSection}>
           <View style={styles.photosSectionHeader}>
@@ -582,11 +636,19 @@ const UserProfileScreen = ({ navigation, route }) => {
                       <Ionicons name="play" size={16} color="#ffffff" />
                     </View>
                   )}
-                  <View style={styles.photoViewsOverlay}>
-                    <Ionicons name="eye-outline" size={14} color="#ffffff" />
-                    <Text style={styles.photoViewsText}>
-                      {post.views ? formatCount(post.views) : '0'} Views
-                    </Text>
+                  <View style={styles.photoStatsOverlay}>
+                    <View style={styles.photoStatItem}>
+                      <Ionicons name="heart" size={14} color="#ffffff" />
+                      <Text style={styles.photoStatText}>
+                        {post.likes ? formatCount(post.likes) : '0'}
+                      </Text>
+                    </View>
+                    <View style={styles.photoStatItem}>
+                      <Ionicons name="eye-outline" size={14} color="#ffffff" />
+                      <Text style={styles.photoStatText}>
+                        {post.views ? formatCount(post.views) : '0'}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -917,20 +979,26 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 12,
   },
-  photoViewsOverlay: {
+  photoStatsOverlay: {
     position: 'absolute',
     bottom: 8,
     left: 8,
     right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-around',
+    gap: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 6,
-    paddingVertical: 4,
+    paddingVertical: 6,
     paddingHorizontal: 8,
   },
-  photoViewsText: {
+  photoStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photoStatText: {
     fontSize: 12,
     color: '#ffffff',
     fontWeight: '500',
@@ -951,6 +1019,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 12,
+  },
+  emptyPostsSubtext: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 4,
   },
   // Logout Section
   logoutSection: {

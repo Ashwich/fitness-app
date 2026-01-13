@@ -198,3 +198,65 @@ export const uploadCoverPhoto = async (fileUri) => {
   }
 };
 
+/**
+ * Upload story media (image or video)
+ */
+export const uploadStoryMedia = async (fileUri, mediaType = 'image') => {
+  try {
+    // Create FormData
+    const formData = new FormData();
+    
+    // Get filename from URI
+    const filename = fileUri.split('/').pop() || `story.${mediaType === 'video' ? 'mp4' : 'jpg'}`;
+    
+    // Determine MIME type
+    const fileExtension = filename.split('.').pop()?.toLowerCase() || 'jpg';
+    let mimeType = 'image/jpeg';
+    if (mediaType === 'video') {
+      mimeType = `video/${fileExtension === 'mp4' ? 'mp4' : 'quicktime'}`;
+    } else if (fileExtension === 'png') {
+      mimeType = 'image/png';
+    } else if (fileExtension === 'gif') {
+      mimeType = 'image/gif';
+    }
+    
+    // Append file to FormData
+    formData.append('media', {
+      uri: fileUri,
+      type: mimeType,
+      name: filename,
+    });
+
+    const response = await uploadClient.post('/story', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const data = extractData(response);
+    
+    // Return full URL (base URL + file path)
+    const baseURL = getBaseURL();
+    let fullUrl = data.url;
+    if (!fullUrl.startsWith('http')) {
+      if (fullUrl.startsWith('/')) {
+        fullUrl = `${baseURL}${fullUrl}`;
+      } else {
+        fullUrl = `${baseURL}/${fullUrl}`;
+      }
+    }
+    
+    if (__DEV__) {
+      console.log('[Upload] Story media URL:', fullUrl);
+    }
+    
+    return {
+      ...data,
+      url: fullUrl,
+    };
+  } catch (error) {
+    console.error('Error uploading story media:', error);
+    throw error;
+  }
+};
+

@@ -29,6 +29,9 @@ import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import AttendanceScreen from '../screens/user/AttendanceScreen';
 import GymReviewsScreen from '../screens/user/GymReviewsScreen';
 import CommunityChatScreen from '../screens/user/CommunityChatScreen';
+import CreateStoryScreen from '../screens/stories/CreateStoryScreen';
+import StoryViewerScreen from '../screens/stories/StoryViewerScreen';
+import SavedPostsScreen from '../screens/user/SavedPostsScreen';
 import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
@@ -101,6 +104,21 @@ const HomeStackNavigator = () => (
       name="CommunityChatScreen"
       component={CommunityChatScreen}
       options={{ title: 'Community Chat' }}
+    />
+    <HomeStack.Screen
+      name="CreateStory"
+      component={CreateStoryScreen}
+      options={{ headerShown: false }}
+    />
+    <HomeStack.Screen
+      name="StoryViewer"
+      component={StoryViewerScreen}
+      options={{ headerShown: false }}
+    />
+    <HomeStack.Screen
+      name="SavedPostsScreen"
+      component={SavedPostsScreen}
+      options={{ title: 'Saved Posts' }}
     />
   </HomeStack.Navigator>
 );
@@ -196,6 +214,11 @@ const ProfileStackNavigator = () => (
       name="CreatePostScreen"
       component={CreatePostScreen}
       options={{ title: 'Create Post' }}
+    />
+    <ProfileStack.Screen
+      name="SavedPostsScreen"
+      component={SavedPostsScreen}
+      options={{ title: 'Saved Posts' }}
     />
   </ProfileStack.Navigator>
 );

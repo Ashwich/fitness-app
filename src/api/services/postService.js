@@ -173,3 +173,26 @@ export const deleteComment = async (commentId) => {
   return extractData(response);
 };
 
+export const savePost = async (postId) => {
+  const response = await postsClient.post(`/${postId}/save`);
+  return extractData(response);
+};
+
+export const unsavePost = async (postId) => {
+  const response = await postsClient.delete(`/${postId}/save`);
+  return extractData(response);
+};
+
+export const getSavedPosts = async (limit = 20, offset = 0) => {
+  try {
+    const response = await postsClient.get('/saved', {
+      params: { limit, offset },
+    });
+    const data = extractData(response);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching saved posts:', error);
+    return [];
+  }
+};
+

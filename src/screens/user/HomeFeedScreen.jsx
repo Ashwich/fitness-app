@@ -13,14 +13,17 @@ import {
   TextInput,
   Platform,
   StatusBar,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
+import StoryBar from '../../components/stories/StoryBar';
 import { useAuth } from '../../context/AuthContext';
 import { useBootstrap } from '../../context/BootstrapContext';
-import { getFeed, likePost, addComment, getPost } from '../../api/services/postService';
+import { useSocket } from '../../context/SocketContext';
+import { getFeed, likePost, addComment, getPost, savePost, unsavePost } from '../../api/services/postService';
 import { toggleFollow, checkFollowStatus, getFollowing } from '../../api/services/followService';
 import { getUnreadCount as getNotificationUnreadCount } from '../../api/services/notificationService';
 import { getReadableError } from '../../utils/apiError';
@@ -46,6 +49,7 @@ const formatTimestamp = (dateString) => {
 const HomeFeedScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { bootstrapData, refreshBootstrap, loading: bootstrapLoading } = useBootstrap();
+  const { socketService } = useSocket();
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,8 +59,9 @@ const HomeFeedScreen = ({ navigation }) => {
   const [showComments, setShowComments] = useState({});
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const [stories, setStories] = useState([]);
   const [expandedCaptions, setExpandedCaptions] = useState({});
+  const [lastTap, setLastTap] = useState({});
+  const [savedPosts, setSavedPosts] = useState(new Set());
 
   // Load feed posts
   const loadFeed = useCallback(async (useBootstrapData = true) => {
@@ -96,6 +101,33 @@ const HomeFeedScreen = ({ navigation }) => {
             username = post.user.email.split('@')[0];
           }
           
+          // Extract like count from multiple possible sources
+          let likesCount = 0;
+          if (post.likesCount !== undefined && post.likesCount !== null) {
+            likesCount = post.likesCount;
+          } else if (Array.isArray(post.likes) && post.likes.length > 0) {
+            likesCount = post.likes.length;
+          } else if (post.likes !== undefined && typeof post.likes === 'number') {
+            likesCount = post.likes;
+          }
+          
+          // Extract isLiked status - check multiple possible sources
+          let isLikedStatus = false;
+          if (post.isLiked !== undefined) {
+            isLikedStatus = Boolean(post.isLiked);
+          } else if (Array.isArray(post.likes)) {
+            // Check if current user's ID is in the likes array
+            isLikedStatus = post.likes.some(like => {
+              if (typeof like === 'string') return like === user?.id;
+              if (typeof like === 'object' && like.userId) return like.userId === user?.id;
+              if (typeof like === 'object' && like.user?.id) return like.user.id === user?.id;
+              return false;
+            });
+          }
+          
+          // Check if post is saved
+          const isSaved = post.isSaved || false;
+          
           return {
             id: post.id,
             userId: post.userId,
@@ -104,11 +136,12 @@ const HomeFeedScreen = ({ navigation }) => {
             postType: post.mediaType,
             mediaUrl: mediaUrl,
             caption: post.caption || '',
-            likes: post.likesCount ?? (post.likes?.length ?? 0),
-            comments: post.commentsCount || post.comments?.length || 0,
+            likes: likesCount,
+            comments: post.commentsCount || (Array.isArray(post.comments) ? post.comments.length : 0),
             commentsList: Array.isArray(post.comments) ? post.comments : (Array.isArray(post.commentsList) ? post.commentsList : []),
             timestamp: formatTimestamp(post.createdAt),
-            isLiked: post.isLiked || false,
+            isLiked: isLikedStatus,
+            isSaved: isSaved,
             createdAt: post.createdAt,
           };
         });
@@ -136,7 +169,22 @@ const HomeFeedScreen = ({ navigation }) => {
       }
       
       const feedResult = await getFeed(20, 0);
-      const feedPosts = feedResult.items || feedResult || [];
+      const feedPosts = feedResult.posts || feedResult.items || feedResult || [];
+      
+      if (__DEV__) {
+        console.log('[HomeFeed] Feed result structure:', {
+          hasPosts: !!feedResult.posts,
+          hasItems: !!feedResult.items,
+          postsLength: feedResult.posts?.length,
+          itemsLength: feedResult.items?.length,
+          firstPost: feedPosts[0] ? {
+            id: feedPosts[0].id,
+            likesCount: feedPosts[0].likesCount,
+            likes: feedPosts[0].likes,
+            isLiked: feedPosts[0].isLiked,
+          } : null,
+        });
+      }
       
       if (!Array.isArray(feedPosts)) {
         setPosts([]);
@@ -170,6 +218,30 @@ const HomeFeedScreen = ({ navigation }) => {
           username = post.user.email.split('@')[0];
         }
         
+        // Extract like count from multiple possible sources
+        let likesCount = 0;
+        if (post.likesCount !== undefined && post.likesCount !== null) {
+          likesCount = post.likesCount;
+        } else if (Array.isArray(post.likes) && post.likes.length > 0) {
+          likesCount = post.likes.length;
+        } else if (post.likes !== undefined && typeof post.likes === 'number') {
+          likesCount = post.likes;
+        }
+        
+        // Extract isLiked status - check multiple possible sources
+        let isLikedStatus = false;
+        if (post.isLiked !== undefined) {
+          isLikedStatus = Boolean(post.isLiked);
+        } else if (Array.isArray(post.likes)) {
+          // Check if current user's ID is in the likes array
+          isLikedStatus = post.likes.some(like => {
+            if (typeof like === 'string') return like === user?.id;
+            if (typeof like === 'object' && like.userId) return like.userId === user?.id;
+            if (typeof like === 'object' && like.user?.id) return like.user.id === user?.id;
+            return false;
+          });
+        }
+        
         return {
           id: post.id,
           userId: post.userId,
@@ -178,11 +250,11 @@ const HomeFeedScreen = ({ navigation }) => {
           postType: post.mediaType,
           mediaUrl: mediaUrl,
           caption: post.caption || '',
-          likes: post.likesCount ?? (post.likes?.length ?? 0),
-          comments: post.commentsCount || post.comments?.length || 0,
-            commentsList: Array.isArray(post.comments) ? post.comments : (Array.isArray(post.commentsList) ? post.commentsList : []),
+          likes: likesCount,
+          comments: post.commentsCount || (Array.isArray(post.comments) ? post.comments.length : 0),
+          commentsList: Array.isArray(post.comments) ? post.comments : (Array.isArray(post.commentsList) ? post.commentsList : []),
           timestamp: formatTimestamp(post.createdAt),
-          isLiked: post.isLiked || false,
+          isLiked: isLikedStatus,
           createdAt: post.createdAt,
         };
       });
@@ -230,54 +302,6 @@ const HomeFeedScreen = ({ navigation }) => {
     }
   }, [bootstrapData, user]);
 
-  // Load stories
-  const loadStories = useCallback(async () => {
-    try {
-      const storiesList = [];
-      
-      if (user) {
-        const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
-        let profilePhoto = user.profile?.avatarUrl || null;
-        if (profilePhoto && !profilePhoto.startsWith('http')) {
-          profilePhoto = profilePhoto.startsWith('/') ? `${baseURL}${profilePhoto}` : `${baseURL}/${profilePhoto}`;
-        }
-        
-        storiesList.push({
-          id: user.id,
-          username: user.username || 'You',
-          profilePhoto: profilePhoto,
-          isOwn: true,
-        });
-      }
-      
-      try {
-        const following = await getFollowing(user?.id, 10, 0);
-        if (Array.isArray(following)) {
-          const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
-          following.forEach((follow) => {
-            const followedUser = follow.user || follow;
-            let profilePhoto = followedUser.profile?.avatarUrl || null;
-            if (profilePhoto && !profilePhoto.startsWith('http')) {
-              profilePhoto = profilePhoto.startsWith('/') ? `${baseURL}${profilePhoto}` : `${baseURL}/${profilePhoto}`;
-            }
-            
-            storiesList.push({
-              id: followedUser.id,
-              username: followedUser.username || 'User',
-              profilePhoto: profilePhoto,
-              isOwn: false,
-            });
-          });
-        }
-      } catch (error) {
-        console.warn('Error loading following for stories:', error);
-      }
-      
-      setStories(storiesList);
-    } catch (error) {
-      console.warn('Error loading stories:', error);
-    }
-  }, [user]);
 
   // Load feed on mount
   useEffect(() => {
@@ -290,9 +314,18 @@ const HomeFeedScreen = ({ navigation }) => {
     } else {
       loadFeed(false);
     }
-    
-    loadStories();
-  }, [bootstrapData, bootstrapLoading, loadFeed, loadStories]);
+  }, [bootstrapData, bootstrapLoading, loadFeed]);
+
+  // Load saved posts status
+  useEffect(() => {
+    const savedPostIds = new Set();
+    posts.forEach(post => {
+      if (post.isSaved) {
+        savedPostIds.add(post.id);
+      }
+    });
+    setSavedPosts(savedPostIds);
+  }, [posts]);
 
   // Refresh on focus
   useFocusEffect(
@@ -311,66 +344,105 @@ const HomeFeedScreen = ({ navigation }) => {
     try {
       await refreshBootstrap();
       await loadFeed(true);
-      await loadStories();
     } catch (error) {
       await loadFeed(false);
     }
   };
 
-  // Handle like
-  const handleLike = async (postId) => {
-    try {
-      // Optimistic update - update UI immediately
+  // Listen for real-time like updates via socket.io
+  useEffect(() => {
+    if (!socketService) return;
+
+    const unsubscribe = socketService.on('post-like-updated', (likeData) => {
+      // Update post with real-time like data for ALL users
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
-          if (post.id === postId) {
-            const newIsLiked = !post.isLiked;
-            return {
+          if (post.id === likeData.postId) {
+            // Always update with server count for accuracy
+            // Only update isLiked if it's our own action
+            const updatedPost = {
               ...post,
-              isLiked: newIsLiked,
-              likes: newIsLiked ? post.likes + 1 : Math.max(0, post.likes - 1),
+              likes: likeData.likeCount || post.likes,
             };
+            
+            // If it's our own like action, also update isLiked status
+            if (likeData.userId === user?.id) {
+              updatedPost.isLiked = likeData.liked;
+            }
+            
+            return updatedPost;
           }
           return post;
+        })
+      );
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [socketService, user?.id]);
+
+  const handleLike = async (postId) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const currentIsLiked = post.isLiked;
+    const currentLikes = post.likes;
+
+    try {
+      // Optimistic update - update UI immediately (Instagram-style instant feedback)
+      setPosts((prevPosts) =>
+        prevPosts.map((p) => {
+          if (p.id === postId) {
+            const newIsLiked = !p.isLiked;
+            return {
+              ...p,
+              isLiked: newIsLiked,
+              likes: newIsLiked ? p.likes + 1 : Math.max(0, p.likes - 1),
+            };
+          }
+          return p;
         })
       );
 
-      // Then make the API call
+      // Make the API call (socket will broadcast to others)
       const result = await likePost(postId);
       
-      // Update with actual server response
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => {
-          if (post.id === postId) {
-            // Handle different response structures
-            const isLiked = result?.data?.liked ?? result?.liked ?? result?.isLiked ?? !post.isLiked;
-            const likesCount = result?.data?.likesCount ?? result?.likesCount ?? result?.data?.likes ?? result?.likes;
-            
-            return {
-              ...post,
-              isLiked: isLiked,
-              likes: likesCount !== undefined ? likesCount : (isLiked ? post.likes + 1 : Math.max(0, post.likes - 1)),
-            };
-          }
-          return post;
-        })
-      );
+      // Update with actual server response to ensure accuracy
+      // The socket will also update, but this ensures our local state is correct
+      const isLiked = result?.data?.liked ?? result?.liked ?? !currentIsLiked;
+      const likesCount = result?.data?.likesCount ?? result?.likesCount ?? result?.data?.likes ?? result?.likes;
+      
+      if (likesCount !== undefined) {
+        setPosts((prevPosts) =>
+          prevPosts.map((p) => {
+            if (p.id === postId) {
+              return {
+                ...p,
+                isLiked: isLiked,
+                likes: likesCount,
+              };
+            }
+            return p;
+          })
+        );
+      }
     } catch (error) {
       console.error('Error liking post:', error);
       // Revert optimistic update on error
       setPosts((prevPosts) =>
-        prevPosts.map((post) => {
-          if (post.id === postId) {
+        prevPosts.map((p) => {
+          if (p.id === postId) {
             return {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+              ...p,
+              isLiked: currentIsLiked,
+              likes: currentLikes,
             };
           }
-          return post;
+          return p;
         })
       );
-      Alert.alert('Error', 'Failed to like post');
+      // Don't show alert for like errors - just revert silently
     }
   };
 
@@ -461,18 +533,118 @@ const HomeFeedScreen = ({ navigation }) => {
     navigation.navigate('UserProfileScreen', { userId });
   };
 
+  // Handle double tap to like (Instagram style)
+  const handleDoubleTap = (postId) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    
+    if (lastTap[postId] && (now - lastTap[postId]) < DOUBLE_TAP_DELAY) {
+      // Double tap detected - like the post
+      handleLike(postId);
+      setLastTap({ ...lastTap, [postId]: null });
+    } else {
+      // Single tap - just update the last tap time
+      setLastTap({ ...lastTap, [postId]: now });
+    }
+  };
+
+  // Handle save post
+  const handleSavePost = async (postId) => {
+    const isSaved = savedPosts.has(postId);
+    
+    try {
+      if (isSaved) {
+        await unsavePost(postId);
+        setSavedPosts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(postId);
+          return newSet;
+        });
+      } else {
+        await savePost(postId);
+        setSavedPosts(prev => new Set(prev).add(postId));
+        Alert.alert('Success', 'Post saved!');
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+      Alert.alert('Error', 'Failed to save post');
+    }
+  };
+
+  // Handle share post
+  const handleShare = async (post) => {
+    try {
+      const shareUrl = post.mediaUrl;
+      const shareMessage = post.caption 
+        ? `${post.caption}\n\n${shareUrl}`
+        : `Check out this post: ${shareUrl}`;
+      
+      if (Platform.OS === 'web') {
+        // For web, use Web Share API
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Check out this post',
+            text: shareMessage,
+            url: shareUrl,
+          });
+        } else {
+          // Fallback: copy to clipboard
+          await Share.share({
+            message: shareMessage,
+          });
+        }
+      } else {
+        // For mobile, use React Native Share
+        const result = await Share.share({
+          message: shareMessage,
+          url: shareUrl,
+        });
+        
+        if (result.action === Share.sharedAction) {
+          if (result.activityType) {
+            console.log('Shared with activity type:', result.activityType);
+          } else {
+            console.log('Post shared');
+          }
+        }
+      }
+    } catch (error) {
+      if (error.message !== 'User did not share') {
+        console.error('Error sharing post:', error);
+        Alert.alert('Error', 'Failed to share post');
+      }
+    }
+  };
+
   const PostCard = ({ post }) => {
     const isCaptionExpanded = expandedCaptions[post.id];
     const shouldTruncate = post.caption && post.caption.length > 90;
     const displayCaption = isCaptionExpanded || !shouldTruncate 
       ? post.caption 
       : post.caption.substring(0, 90) + '...';
+    
+    // Use ref to maintain TextInput reference and prevent focus loss
+    const commentInputRef = React.useRef(null);
+    const [localCommentText, setLocalCommentText] = React.useState(commentInputs[post.id] || '');
+    
+    // Sync with parent state when it changes externally
+    React.useEffect(() => {
+      if (commentInputs[post.id] !== localCommentText) {
+        setLocalCommentText(commentInputs[post.id] || '');
+      }
+    }, [commentInputs[post.id]]);
 
     return (
       <View style={styles.postCard}>
         {/* Post Media with Overlay Header */}
         <View style={styles.postMediaContainer}>
-          <Image source={{ uri: post.mediaUrl }} style={styles.postMedia} resizeMode="cover" />
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={() => handleDoubleTap(post.id)}
+            style={styles.imageTouchable}
+          >
+            <Image source={{ uri: post.mediaUrl }} style={styles.postMedia} resizeMode="cover" />
+          </TouchableOpacity>
           
           {/* Overlay Header on Top of Image */}
           <View style={styles.overlayHeader}>
@@ -497,13 +669,19 @@ const HomeFeedScreen = ({ navigation }) => {
           
           {/* Overlay Footer with Likes */}
           <View style={styles.overlayFooter}>
-            <TouchableOpacity onPress={() => handleLike(post.id)} style={styles.likesPill}>
+            <TouchableOpacity 
+              onPress={() => handleLike(post.id)} 
+              style={styles.likesPill}
+              activeOpacity={0.7}
+            >
               <Ionicons 
                 name={post.isLiked ? "heart" : "heart-outline"} 
                 size={20} 
                 color={post.isLiked ? "#ef4444" : "#111827"} 
               />
-              <Text style={styles.overlayLikesText}>{post.likes.toLocaleString()} Likes</Text>
+              <Text style={styles.overlayLikesText}>
+                {post.likes > 0 ? `${post.likes.toLocaleString()} ${post.likes === 1 ? 'like' : 'likes'}` : 'Be the first to like'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -511,15 +689,34 @@ const HomeFeedScreen = ({ navigation }) => {
         {/* Action Bar */}
         <View style={styles.actionBar}>
           <View style={styles.leftActions}>
+            <TouchableOpacity 
+              onPress={() => handleLike(post.id)} 
+              style={styles.actionIcon}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={post.isLiked ? "heart" : "heart-outline"} 
+                size={26} 
+                color={post.isLiked ? "#ef4444" : "#111827"} 
+              />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => toggleComments(post.id)} style={styles.actionIcon}>
               <Feather name="message-circle" size={24} color="#111827" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIcon}>
+            <TouchableOpacity 
+              style={styles.actionIcon}
+              onPress={() => handleShare(post)}
+            >
               <Feather name="send" size={22} color="#111827" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity>
-            <Feather name="bookmark" size={24} color="#111827" />
+          <TouchableOpacity onPress={() => handleSavePost(post.id)}>
+            <Feather 
+              name={savedPosts.has(post.id) ? "bookmark" : "bookmark"} 
+              size={24} 
+              color={savedPosts.has(post.id) ? "#9333ea" : "#111827"} 
+              fill={savedPosts.has(post.id) ? "#9333ea" : "none"}
+            />
           </TouchableOpacity>
         </View>
 
@@ -643,16 +840,35 @@ const HomeFeedScreen = ({ navigation }) => {
           {/* Always-visible comment input - below comments section or caption if no comments */}
           <View style={styles.commentInputContainer}>
             <TextInput
+              ref={commentInputRef}
+              key={`comment-input-${post.id}`}
               style={styles.commentInput}
               placeholder="Add a comment..."
-              value={commentInputs[post.id] || ''}
-              onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [post.id]: text }))}
-              onSubmitEditing={() => handleAddComment(post.id)}
+              value={localCommentText}
+              onChangeText={(text) => {
+                setLocalCommentText(text);
+                // Update parent state asynchronously to prevent re-render
+                setCommentInputs(prev => ({ ...prev, [post.id]: text }));
+              }}
+              onSubmitEditing={() => {
+                if (localCommentText.trim()) {
+                  handleAddComment(post.id);
+                }
+              }}
               multiline={false}
+              blurOnSubmit={false}
+              returnKeyType="send"
+              keyboardType="default"
+              autoCorrect={true}
+              editable={true}
             />
-            {commentInputs[post.id]?.trim() && (
+            {localCommentText.trim() && (
               <TouchableOpacity 
-                onPress={() => handleAddComment(post.id)} 
+                onPress={() => {
+                  if (localCommentText.trim()) {
+                    handleAddComment(post.id);
+                  }
+                }} 
                 style={styles.commentPostButton}
                 activeOpacity={0.7}
               >
@@ -693,25 +909,22 @@ const HomeFeedScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
       >
         {/* Stories */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storiesWrapper} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          {stories.map((story) => (
-            <TouchableOpacity key={story.id} style={styles.storyCircleContainer}>
-              <View style={[styles.storyRing, story.isOwn ? styles.ownStoryRing : styles.activeStoryRing]}>
-                <Image source={{ uri: story.profilePhoto || 'https://via.placeholder.com/150' }} style={styles.storyImage} />
-                {story.isOwn && (
-                  <View style={styles.plusIcon}>
-                    <Ionicons name="add" size={14} color="white" />
-                  </View>
-                )}
-              </View>
-              <Text style={styles.storyName} numberOfLines={1}>{story.isOwn ? 'Your Story' : story.username}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <StoryBar navigation={navigation} currentUserId={user?.id} />
 
-        {loading ? <ActivityIndicator style={{ marginTop: 20 }} color="#000" /> : posts.map((post) => <PostCard key={post.id} post={post} />)}
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 20 }} color="#000" />
+        ) : (
+          posts.map((post) => (
+            <PostCard 
+              key={post.id} 
+              post={post}
+            />
+          ))
+        )}
       </ScrollView>
     </ScreenContainer>
   );
@@ -754,51 +967,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fff',
   },
-  // Stories
-  storiesWrapper: {
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#dbdbdb',
-  },
-  storyCircleContainer: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  storyRing: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    padding: 2.5,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeStoryRing: {
-    borderColor: '#c026d3', // Gradient look
-  },
-  ownStoryRing: {
-    borderColor: '#dbdbdb',
-  },
-  storyImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    backgroundColor: '#f3f4f6',
-  },
-  plusIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#3b82f6',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  storyName: {
-    fontSize: 11,
-    marginTop: 4,
-    color: '#262626',
-  },
   // Post Card
   postCard: {
     backgroundColor: '#fff',
@@ -808,6 +976,10 @@ const styles = StyleSheet.create({
     width: width,
     height: width,
     position: 'relative',
+  },
+  imageTouchable: {
+    width: '100%',
+    height: '100%',
   },
   postMedia: {
     width: '100%',
@@ -1026,14 +1198,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderTopWidth: 0.5,
     borderTopColor: '#efefef',
+    backgroundColor: '#fff',
   },
   commentInput: {
     flex: 1,
     fontSize: 14,
     color: '#111827',
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-    minHeight: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minHeight: 36,
+    backgroundColor: '#f9fafb',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   videoIndicator: {
     position: 'absolute',

@@ -4,8 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { uploadProfilePhoto } from '../api/services/uploadService';
 import { upsertProfile } from '../api/services/profileService';
 
-// Fix deprecated MediaTypeOptions
-const MediaType = ImagePicker.MediaType || ImagePicker.MediaTypeOptions;
+// Use MediaType if available, otherwise fallback to MediaTypeOptions (deprecated but still works)
+const getMediaType = () => {
+  if (ImagePicker.MediaType) {
+    return ImagePicker.MediaType.Images;
+  }
+  if (ImagePicker.MediaTypeOptions) {
+    return ImagePicker.MediaTypeOptions.Images;
+  }
+  return 'images'; // Fallback to string value
+};
 
 const PROFILE_PHOTO_KEY = 'fitsera_profile_photo';
 
@@ -27,7 +35,7 @@ export const pickProfilePhoto = async (uploadToBackend = true) => {
     if (!hasPermission) return null;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: MediaType.Images,
+      mediaTypes: getMediaType(),
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
