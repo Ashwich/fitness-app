@@ -151,6 +151,11 @@ export const getUserPosts = async (userId, limit = 20, offset = 0) => {
   }
 };
 
+export const updatePost = async (postId, data) => {
+  const response = await postsClient.put(`/${postId}`, data);
+  return extractData(response);
+};
+
 export const deletePost = async (postId) => {
   const response = await postsClient.delete(`/${postId}`);
   return extractData(response);

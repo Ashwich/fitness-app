@@ -29,22 +29,27 @@ const SavedPostsScreen = ({ navigation }) => {
       const posts = await getSavedPosts(50, 0);
       
       const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
+      console.log('Raw saved posts data:', JSON.stringify(posts, null, 2));
+      
       const transformedPosts = posts.map((savedPost) => {
+        // Handle different response structures
         const post = savedPost.post || savedPost;
-        let mediaUrl = post.mediaUrl;
+        let mediaUrl = post.mediaUrl || post.media_url;
         if (mediaUrl && !mediaUrl.startsWith('http')) {
           mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
         }
         
         return {
           id: post.id,
-          type: post.mediaType,
+          type: post.mediaType || post.media_type,
           url: mediaUrl,
-          likes: post.likesCount || post.likes?.length || 0,
-          comments: post.commentsCount || post.comments?.length || 0,
-          savedAt: savedPost.savedAt || savedPost.createdAt,
+          likes: post.likesCount || post.likes_count || (Array.isArray(post.likes) ? post.likes.length : 0),
+          comments: post.commentsCount || post.comments_count || (Array.isArray(post.comments) ? post.comments.length : 0),
+          savedAt: savedPost.savedAt || savedPost.createdAt || savedPost.created_at,
         };
-      });
+      }).filter(post => post.id && post.url); // Filter out invalid posts
+      
+      console.log('Transformed saved posts:', transformedPosts.length);
       
       setSavedPosts(transformedPosts);
     } catch (error) {

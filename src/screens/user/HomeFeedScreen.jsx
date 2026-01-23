@@ -23,7 +23,7 @@ import StoryBar from '../../components/stories/StoryBar';
 import { useAuth } from '../../context/AuthContext';
 import { useBootstrap } from '../../context/BootstrapContext';
 import { useSocket } from '../../context/SocketContext';
-import { getFeed, likePost, addComment, getPost, savePost, unsavePost } from '../../api/services/postService';
+import { getFeed, likePost, addComment, getPost, savePost, unsavePost, updatePost } from '../../api/services/postService';
 import { toggleFollow, checkFollowStatus, getFollowing } from '../../api/services/followService';
 import { getUnreadCount as getNotificationUnreadCount } from '../../api/services/notificationService';
 import { getReadableError } from '../../utils/apiError';
@@ -62,6 +62,8 @@ const HomeFeedScreen = ({ navigation }) => {
   const [expandedCaptions, setExpandedCaptions] = useState({});
   const [lastTap, setLastTap] = useState({});
   const [savedPosts, setSavedPosts] = useState(new Set());
+  const [editingCaptions, setEditingCaptions] = useState({});
+  const [captionTexts, setCaptionTexts] = useState({});
 
   // Load feed posts
   const loadFeed = useCallback(async (useBootstrapData = true) => {
@@ -447,13 +449,14 @@ const HomeFeedScreen = ({ navigation }) => {
   };
 
   // Handle add comment
-  const handleAddComment = async (postId) => {
-    const commentText = commentInputs[postId]?.trim();
+  const handleAddComment = async (postId, commentTextOverride = null) => {
+    // Use override text if provided (from local state), otherwise use parent state
+    const commentText = (commentTextOverride || commentInputs[postId] || '').trim();
     if (!commentText) return;
 
-    // Clear input immediately for better UX
-    const originalInput = commentInputs[postId];
-    setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+    // Store original input for error recovery
+    const originalInput = commentTextOverride || commentInputs[postId];
+    // Don't clear immediately - let the PostCard handle it after success
 
     try {
       const result = await addComment(postId, commentText);
@@ -512,6 +515,9 @@ const HomeFeedScreen = ({ navigation }) => {
             : post
         );
       });
+      
+      // Clear input after successful comment
+      setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
     } catch (error) {
       console.error('Error adding comment:', error);
       // Restore input on error
@@ -616,23 +622,29 @@ const HomeFeedScreen = ({ navigation }) => {
     }
   };
 
-  const PostCard = ({ post }) => {
+  const PostCard = React.memo(({ post }) => {
     const isCaptionExpanded = expandedCaptions[post.id];
+    const isEditingCaption = editingCaptions[post.id];
     const shouldTruncate = post.caption && post.caption.length > 90;
     const displayCaption = isCaptionExpanded || !shouldTruncate 
       ? post.caption 
       : post.caption.substring(0, 90) + '...';
     
+    const isOwnPost = post.userId === user?.id;
+    
     // Use ref to maintain TextInput reference and prevent focus loss
     const commentInputRef = React.useRef(null);
+    // Use local state to prevent parent re-renders from affecting input
     const [localCommentText, setLocalCommentText] = React.useState(commentInputs[post.id] || '');
     
-    // Sync with parent state when it changes externally
+    // Sync when parent state changes (only when cleared after successful comment)
     React.useEffect(() => {
-      if (commentInputs[post.id] !== localCommentText) {
-        setLocalCommentText(commentInputs[post.id] || '');
+      const parentValue = commentInputs[post.id] || '';
+      // Only update if parent was cleared (empty) and we have text
+      if (!parentValue && localCommentText) {
+        setLocalCommentText('');
       }
-    }, [commentInputs[post.id]]);
+    }, [commentInputs[post.id], post.id]);
 
     return (
       <View style={styles.postCard}>
@@ -723,13 +735,82 @@ const HomeFeedScreen = ({ navigation }) => {
         {/* Post Info */}
         <View style={styles.postInfoContainer}>
           <View style={styles.captionContainer}>
-            <Text style={styles.captionText}>
-              <Text style={styles.captionUsername}>{post.username} </Text>
-              {displayCaption}
-              {shouldTruncate && !isCaptionExpanded && (
-                <Text style={styles.moreLink} onPress={() => setExpandedCaptions(p => ({...p, [post.id]: true}))}> more</Text>
-              )}
-            </Text>
+            {isEditingCaption ? (
+              <View style={styles.captionEditContainer}>
+                <TextInput
+                  style={styles.captionEditInput}
+                  value={captionTexts[post.id] !== undefined ? captionTexts[post.id] : post.caption || ''}
+                  onChangeText={(text) => setCaptionTexts(prev => ({ ...prev, [post.id]: text }))}
+                  multiline
+                  autoFocus
+                  placeholder="Write a caption..."
+                />
+                <View style={styles.captionEditActions}>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setEditingCaptions(prev => {
+                        const newState = { ...prev };
+                        delete newState[post.id];
+                        return newState;
+                      });
+                      setCaptionTexts(prev => {
+                        const newState = { ...prev };
+                        delete newState[post.id];
+                        return newState;
+                      });
+                    }}
+                    style={styles.captionCancelButton}
+                  >
+                    <Text style={styles.captionCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={async () => {
+                      const newCaption = captionTexts[post.id] !== undefined ? captionTexts[post.id] : post.caption || '';
+                      try {
+                        await updatePost(post.id, { caption: newCaption });
+                        setPosts(prev => prev.map(p => 
+                          p.id === post.id ? { ...p, caption: newCaption } : p
+                        ));
+                        setEditingCaptions(prev => {
+                          const newState = { ...prev };
+                          delete newState[post.id];
+                          return newState;
+                        });
+                        setCaptionTexts(prev => {
+                          const newState = { ...prev };
+                          delete newState[post.id];
+                          return newState;
+                        });
+                        Alert.alert('Success', 'Caption updated successfully');
+                      } catch (error) {
+                        console.error('Error updating caption:', error);
+                        Alert.alert('Error', 'Failed to update caption');
+                      }
+                    }}
+                    style={styles.captionSaveButton}
+                  >
+                    <Text style={styles.captionSaveText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.captionText}>
+                <Text style={styles.captionUsername}>{post.username} </Text>
+                {displayCaption}
+                {shouldTruncate && !isCaptionExpanded && (
+                  <Text style={styles.moreLink} onPress={() => setExpandedCaptions(p => ({...p, [post.id]: true}))}> more</Text>
+                )}
+                {isOwnPost && (
+                  <Text 
+                    style={styles.editCaptionLink} 
+                    onPress={() => {
+                      setEditingCaptions(prev => ({ ...prev, [post.id]: true }));
+                      setCaptionTexts(prev => ({ ...prev, [post.id]: post.caption || '' }));
+                    }}
+                  >  Edit</Text>
+                )}
+              </Text>
+            )}
           </View>
 
           {/* Comments Section */}
@@ -846,13 +927,21 @@ const HomeFeedScreen = ({ navigation }) => {
               placeholder="Add a comment..."
               value={localCommentText}
               onChangeText={(text) => {
+                // Update local state immediately - this prevents keyboard from closing
                 setLocalCommentText(text);
-                // Update parent state asynchronously to prevent re-render
-                setCommentInputs(prev => ({ ...prev, [post.id]: text }));
+                // Update parent state asynchronously to avoid triggering re-render
+                requestAnimationFrame(() => {
+                  setCommentInputs(prev => {
+                    if (prev[post.id] !== text) {
+                      return { ...prev, [post.id]: text };
+                    }
+                    return prev;
+                  });
+                });
               }}
               onSubmitEditing={() => {
                 if (localCommentText.trim()) {
-                  handleAddComment(post.id);
+                  handleAddComment(post.id, localCommentText);
                 }
               }}
               multiline={false}
@@ -861,12 +950,13 @@ const HomeFeedScreen = ({ navigation }) => {
               keyboardType="default"
               autoCorrect={true}
               editable={true}
+              autoFocus={false}
             />
             {localCommentText.trim() && (
               <TouchableOpacity 
                 onPress={() => {
                   if (localCommentText.trim()) {
-                    handleAddComment(post.id);
+                    handleAddComment(post.id, localCommentText);
                   }
                 }} 
                 style={styles.commentPostButton}
@@ -879,7 +969,7 @@ const HomeFeedScreen = ({ navigation }) => {
         </View>
       </View>
     );
-  };
+  });
 
   // Calculate header padding - iOS needs less padding
   // On iOS, use a smaller fixed value since SafeAreaView already provides some spacing
@@ -1096,6 +1186,51 @@ const styles = StyleSheet.create({
   },
   moreLink: {
     color: '#8e8e8e',
+  },
+  captionEditContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  captionEditInput: {
+    fontSize: 14,
+    color: '#262626',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 80,
+    backgroundColor: '#f9fafb',
+    marginBottom: 8,
+  },
+  captionEditActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  captionCancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  captionCancelText: {
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  captionSaveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#9333ea',
+    borderRadius: 8,
+  },
+  captionSaveText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editCaptionLink: {
+    color: '#9333ea',
+    fontSize: 14,
+    fontWeight: '600',
   },
   commentsSection: {
     paddingHorizontal: 14,
