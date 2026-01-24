@@ -19,7 +19,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { upsertProfile } from '../../api/services/profileService';
 import { getUserById } from '../../api/services/userProfileService';
-import { getUserPosts } from '../../api/services/postService';
 import { getFollowStats, toggleFollow, checkFollowStatus } from '../../api/services/followService';
 import { pickProfilePhoto, requestPermissions } from '../../services/profilePhotoService';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,7 +42,6 @@ const UserProfileScreen = ({ navigation, route }) => {
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [posts, setPosts] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [bannerImage, setBannerImage] = useState(null);
   const bannerImageRef = useRef(null); // Ref to preserve banner image across reloads
@@ -53,29 +51,6 @@ const UserProfileScreen = ({ navigation, route }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Listen for real-time like updates via socket.io
-  useEffect(() => {
-    if (!socketService) return;
-
-    const unsubscribe = socketService.on('post-like-updated', (likeData) => {
-      // Update post with real-time like data
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => {
-          if (post.id === likeData.postId) {
-            return {
-              ...post,
-              likes: likeData.likeCount || post.likes,
-            };
-          }
-          return post;
-        })
-      );
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [socketService]);
 
   // Refresh profile when screen comes into focus (e.g., after posting)
   useFocusEffect(
@@ -153,33 +128,6 @@ const UserProfileScreen = ({ navigation, route }) => {
           setProfilePhoto(null);
         }
         
-        // Load own posts
-        const userPosts = await getUserPosts(userId, 50, 0);
-        const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
-        const transformedPosts = userPosts.map((post) => {
-          let mediaUrl = post.mediaUrl;
-          if (mediaUrl && !mediaUrl.startsWith('http')) {
-            mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
-          }
-          return {
-            id: post.id,
-            type: post.mediaType,
-            url: mediaUrl,
-            views: post.viewsCount || post.views || 0,
-            likes: post.likesCount || post.likes?.length || 0,
-            comments: post.commentsCount || post.comments?.length || 0,
-          };
-        });
-        
-        // Deduplicate posts by ID to prevent duplicate keys
-        const uniquePosts = transformedPosts.reduce((acc, post) => {
-          if (!acc.find(p => p.id === post.id)) {
-            acc.push(post);
-          }
-          return acc;
-        }, []);
-        
-        setPosts(uniquePosts);
         
         // Load follow stats
         const stats = await getFollowStats(userId);
@@ -198,33 +146,6 @@ const UserProfileScreen = ({ navigation, route }) => {
           setProfilePhoto(profileData.avatarUrl || null);
         }
         
-        // Load user's posts
-        const userPosts = await getUserPosts(userId, 50, 0);
-        const baseURL = ENV.USERS_SERVICE_URL.replace('/api/users', '');
-        const transformedPosts = userPosts.map((post) => {
-          let mediaUrl = post.mediaUrl;
-          if (mediaUrl && !mediaUrl.startsWith('http')) {
-            mediaUrl = mediaUrl.startsWith('/') ? `${baseURL}${mediaUrl}` : `${baseURL}/${mediaUrl}`;
-          }
-          return {
-            id: post.id,
-            type: post.mediaType,
-            url: mediaUrl,
-            views: post.viewsCount || post.views || 0,
-            likes: post.likesCount || post.likes?.length || 0,
-            comments: post.commentsCount || post.comments?.length || 0,
-          };
-        });
-        
-        // Deduplicate posts by ID to prevent duplicate keys
-        const uniquePosts = transformedPosts.reduce((acc, post) => {
-          if (!acc.find(p => p.id === post.id)) {
-            acc.push(post);
-          }
-          return acc;
-        }, []);
-        
-        setPosts(uniquePosts);
         
         // Load follow stats and status
         const [stats, followStatus] = await Promise.all([
@@ -485,10 +406,6 @@ const UserProfileScreen = ({ navigation, route }) => {
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{posts.length}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </View>
           <TouchableOpacity style={styles.statItem}>
             <Text style={styles.statValue}>{formatCount(followers)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
@@ -511,14 +428,6 @@ const UserProfileScreen = ({ navigation, route }) => {
                   {isEditing ? 'Save' : 'Edit Profile'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.addPostButton}
-                onPress={() => {
-                  navigation.navigate('CreatePostScreen');
-                }}
-              >
-                <Ionicons name="add" size={24} color="#ffffff" />
-              </TouchableOpacity>
             </>
           ) : (
             <>
@@ -530,19 +439,6 @@ const UserProfileScreen = ({ navigation, route }) => {
                   {isFollowing ? 'Following' : 'Follow'}
                 </Text>
               </TouchableOpacity>
-              {isFollowing && (
-                <TouchableOpacity
-                  style={styles.messageButton}
-                  onPress={() => {
-                    navigation.navigate('ChatScreen', {
-                      userId: userId,
-                      partner: profile,
-                    });
-                  }}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#ffffff" />
-                </TouchableOpacity>
-              )}
             </>
           )}
         </View>
@@ -583,78 +479,6 @@ const UserProfileScreen = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Saved Posts Section - Only for own profile */}
-        {isOwnProfile && (
-          <View style={styles.photosSection}>
-            <View style={styles.photosSectionHeader}>
-              <Text style={styles.photosSectionTitle}>Saved Posts</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('SavedPostsScreen')}>
-                <Text style={styles.seeAllLink}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.emptyPosts}>
-              <Ionicons name="bookmark-outline" size={48} color="#9ca3af" />
-              <Text style={styles.emptyPostsText}>No saved posts yet</Text>
-              <Text style={styles.emptyPostsSubtext}>Posts you save will appear here</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Photos Section */}
-        <View style={styles.photosSection}>
-          <View style={styles.photosSectionHeader}>
-            <Text style={styles.photosSectionTitle}>Photos</Text>
-            {posts.length > 0 && (
-              <TouchableOpacity>
-                <Text style={styles.seeAllLink}>See All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {posts.length === 0 ? (
-            <View style={styles.emptyPosts}>
-              <Ionicons name="grid-outline" size={48} color="#9ca3af" />
-              <Text style={styles.emptyPostsText}>No posts yet</Text>
-            </View>
-          ) : (
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.photosScrollContent}
-            >
-              {posts.map((post, index) => (
-                <TouchableOpacity 
-                  key={post.id || `post-${index}-${post.url}`} 
-                  style={styles.photoThumbnail}
-                  onPress={() => {
-                    // Navigate to post detail or open in full screen
-                    navigation.navigate('PostDetailScreen', { postId: post.id });
-                  }}
-                >
-                  <Image source={{ uri: post.url }} style={styles.photoThumbnailImage} />
-                  {post.type === 'video' && (
-                    <View style={styles.videoBadge}>
-                      <Ionicons name="play" size={16} color="#ffffff" />
-                    </View>
-                  )}
-                  <View style={styles.photoStatsOverlay}>
-                    <View style={styles.photoStatItem}>
-                      <Ionicons name="heart" size={14} color="#ffffff" />
-                      <Text style={styles.photoStatText}>
-                        {post.likes ? formatCount(post.likes) : '0'}
-                      </Text>
-                    </View>
-                    <View style={styles.photoStatItem}>
-                      <Ionicons name="eye-outline" size={14} color="#ffffff" />
-                      <Text style={styles.photoStatText}>
-                        {post.views ? formatCount(post.views) : '0'}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
 
         {/* Logout Section - Only for own profile */}
         {isOwnProfile && (
@@ -840,22 +664,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '600',
-  },
-  messageButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#9333ea',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addPostButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#9333ea',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   bannerEditButton: {
     position: 'absolute',

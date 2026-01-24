@@ -6,7 +6,6 @@ import { View } from 'react-native';
 import { AppLoader } from '../components/AppLoader';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import HomeFeedScreen from '../screens/user/HomeFeedScreen';
 import UserProfileScreen from '../screens/user/UserProfileScreen';
 import HomepageScreen from '../screens/landing/HomepageScreen';
 import UserDashboardScreen from '../screens/user/UserDashboardScreen';
@@ -18,27 +17,17 @@ import ProfileSummaryScreen from '../screens/user/ProfileSummaryScreen';
 import WaterIntakeScreen from '../screens/user/WaterIntakeScreen';
 import StepsGoalScreen from '../screens/user/StepsGoalScreen';
 import ProfileSettingsScreen from '../screens/user/ProfileSettingsScreen';
-import CreatePostScreen from '../screens/user/CreatePostScreen';
-import NotificationsScreen from '../screens/user/NotificationsScreen';
-import MessagesScreen from '../screens/user/MessagesScreen';
-import ChatScreen from '../screens/user/ChatScreen';
-import SearchScreen from '../screens/user/SearchScreen';
 import GymsScreen from '../screens/user/GymsScreen';
 import GymProfileScreen from '../screens/user/GymProfileScreen';
 import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import AttendanceScreen from '../screens/user/AttendanceScreen';
 import GymReviewsScreen from '../screens/user/GymReviewsScreen';
-import CommunityChatScreen from '../screens/user/CommunityChatScreen';
-import CreateStoryScreen from '../screens/stories/CreateStoryScreen';
-import StoryViewerScreen from '../screens/stories/StoryViewerScreen';
-import SavedPostsScreen from '../screens/user/SavedPostsScreen';
 import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
 const AuthStack = createNativeStackNavigator();
 const AppTabs = createBottomTabNavigator();
 const UserStack = createNativeStackNavigator();
-const HomeStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const DiaryStack = createNativeStackNavigator();
 const GymsStack = createNativeStackNavigator();
@@ -57,71 +46,6 @@ const AuthNavigator = () => (
   </AuthStack.Navigator>
 );
 
-// Home Stack - includes HomeFeedScreen and UserProfileScreen for navigation
-const HomeStackNavigator = () => (
-  <HomeStack.Navigator
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <HomeStack.Screen name="HomeFeed" component={HomeFeedScreen} />
-    <HomeStack.Screen
-      name="UserProfileScreen"
-      component={UserProfileScreen}
-      options={{ title: 'Profile' }}
-    />
-    <HomeStack.Screen
-      name="CreatePostScreen"
-      component={CreatePostScreen}
-      options={{ title: 'Create Post' }}
-    />
-    <HomeStack.Screen
-      name="SearchScreen"
-      component={SearchScreen}
-      options={{ title: 'Search' }}
-    />
-    <HomeStack.Screen
-      name="NotificationsScreen"
-      component={NotificationsScreen}
-      options={{ title: 'Notifications' }}
-    />
-    <HomeStack.Screen
-      name="MessagesScreen"
-      component={MessagesScreen}
-      options={{ title: 'Messages' }}
-    />
-    <HomeStack.Screen
-      name="ChatScreen"
-      component={ChatScreen}
-      options={{ title: 'Chat' }}
-    />
-    <HomeStack.Screen
-      name="GymProfileScreen"
-      component={GymProfileScreen}
-      options={{ title: 'Gym Profile' }}
-    />
-    <HomeStack.Screen
-      name="CommunityChatScreen"
-      component={CommunityChatScreen}
-      options={{ title: 'Community Chat' }}
-    />
-    <HomeStack.Screen
-      name="CreateStory"
-      component={CreateStoryScreen}
-      options={{ headerShown: false }}
-    />
-    <HomeStack.Screen
-      name="StoryViewer"
-      component={StoryViewerScreen}
-      options={{ headerShown: false }}
-    />
-    <HomeStack.Screen
-      name="SavedPostsScreen"
-      component={SavedPostsScreen}
-      options={{ title: 'Saved Posts' }}
-    />
-  </HomeStack.Navigator>
-);
 
 const UserStackNavigator = () => (
   <UserStack.Navigator
@@ -171,11 +95,6 @@ const UserStackNavigator = () => (
       options={{ title: 'Settings' }}
     />
     <UserStack.Screen
-      name="UserProfileScreen"
-      component={UserProfileScreen}
-      options={{ title: 'Profile' }}
-    />
-    <UserStack.Screen
       name="NutritionDiaryScreen"
       component={NutritionDiaryScreen}
       options={{ title: 'Nutrition Diary' }}
@@ -195,10 +114,15 @@ const UserStackNavigator = () => (
       component={GymProfileScreen}
       options={{ title: 'Gym Profile' }}
     />
+    <UserStack.Screen
+      name="UserProfileScreen"
+      component={UserProfileScreen}
+      options={{ title: 'Profile' }}
+    />
   </UserStack.Navigator>
 );
 
-// Profile Stack - includes UserProfileScreen and CreatePostScreen
+// Profile Stack - includes UserProfileScreen
 const ProfileStackNavigator = () => (
   <ProfileStack.Navigator
     screenOptions={{
@@ -209,16 +133,6 @@ const ProfileStackNavigator = () => (
       name="UserProfileScreen"
       component={UserProfileScreen}
       options={{ title: 'Profile' }}
-    />
-    <ProfileStack.Screen
-      name="CreatePostScreen"
-      component={CreatePostScreen}
-      options={{ title: 'Create Post' }}
-    />
-    <ProfileStack.Screen
-      name="SavedPostsScreen"
-      component={SavedPostsScreen}
-      options={{ title: 'Saved Posts' }}
     />
   </ProfileStack.Navigator>
 );
@@ -278,10 +192,8 @@ const AppTabNavigator = () => (
         borderTopColor: '#e5e7eb',
       },
       tabBarIcon: ({ color, size, focused }) => {
-        let iconName = 'home-outline';
-        if (route.name === 'Home') {
-          iconName = focused ? 'home' : 'home-outline';
-        } else if (route.name === 'Dashboard') {
+        let iconName = 'grid-outline';
+        if (route.name === 'Dashboard') {
           iconName = focused ? 'grid' : 'grid-outline';
         } else if (route.name === 'Diary') {
           iconName = focused ? 'restaurant' : 'restaurant-outline';
@@ -294,11 +206,6 @@ const AppTabNavigator = () => (
       },
     })}
   >
-    <AppTabs.Screen 
-      name="Home" 
-      component={HomeStackNavigator} 
-      options={{ title: 'Home' }} 
-    />
     <AppTabs.Screen 
       name="Dashboard" 
       component={UserStackNavigator} 
