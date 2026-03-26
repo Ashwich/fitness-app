@@ -1,4 +1,4 @@
-import { Accelerometer, Gyroscope } from 'expo-sensors';
+import { Accelerometer, Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
@@ -46,6 +46,7 @@ try {
 
 // Initialize sensors (fallback method)
 let accelerometerSubscription = null;
+let pedometerSubscription = null;
 let stepCount = 0;
 let lastStepTime = Date.now();
 let isTracking = false;
@@ -64,7 +65,34 @@ export const startStepTracking = async () => {
     const stepsData = storedData ? JSON.parse(storedData) : {};
     stepCount = stepsData[today] || 0;
 
-    // Set up accelerometer
+    // Prefer built-in pedometer sensor for fallback (device-native step source)
+    const pedometerAvailable = await Pedometer.isAvailableAsync();
+    if (pedometerAvailable) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+      try {
+        const result = await Pedometer.getStepCountAsync(startOfDay, now);
+        if (typeof result?.steps === 'number') {
+          stepCount = Math.max(stepCount, result.steps);
+          await saveStepsForToday(stepCount);
+        }
+      } catch (error) {
+        console.log('[HealthService] Pedometer initial fetch failed, continuing with watcher');
+      }
+
+      pedometerSubscription = Pedometer.watchStepCount(({ steps }) => {
+        // `steps` is cumulative since subscription start; merge with stored baseline.
+        const mergedSteps = Math.max(stepCount, stepsData[today] || 0, steps || 0);
+        stepCount = mergedSteps;
+        saveStepsForToday(stepCount);
+      });
+
+      isTracking = true;
+      return;
+    }
+
+    // Legacy fallback: accelerometer estimate if pedometer isn't available
     Accelerometer.setUpdateInterval(100);
     
     accelerometerSubscription = Accelerometer.addListener(({ x, y, z }) => {
@@ -92,6 +120,10 @@ export const startStepTracking = async () => {
 };
 
 export const stopStepTracking = () => {
+  if (pedometerSubscription) {
+    pedometerSubscription.remove();
+    pedometerSubscription = null;
+  }
   if (accelerometerSubscription) {
     accelerometerSubscription.remove();
     accelerometerSubscription = null;
@@ -297,7 +329,21 @@ export const getTodaySteps = async () => {
       }
     }
 
-    // Fallback to local storage/accelerometer
+    // Fallback to local storage; if available, refresh from built-in pedometer first
+    const pedometerAvailable = await Pedometer.isAvailableAsync();
+    if (pedometerAvailable) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const pedometerResult = await Pedometer.getStepCountAsync(startOfDay, now);
+      if (typeof pedometerResult?.steps === 'number') {
+        await saveStepsForToday(pedometerResult.steps);
+        stepCount = pedometerResult.steps;
+        return pedometerResult.steps;
+      }
+    }
+
+    // Final fallback to local storage/accelerometer cache
     const today = new Date().toISOString().split('T')[0];
     const storedData = await AsyncStorage.getItem(STEPS_KEY);
     const stepsData = storedData ? JSON.parse(storedData) : {};

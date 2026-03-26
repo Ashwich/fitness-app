@@ -23,35 +23,9 @@ export default {
     android: {
       package: 'com.fitsera.app',
       versionCode: 2,
-      minSdkVersion: 21,
-      targetSdkVersion: 34,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
-      },
-      edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false,
-      permissions: [
-        'android.permission.ACTIVITY_RECOGNITION',
-        'android.permission.FOREGROUND_SERVICE',
-      ],
-      // Allow cleartext (HTTP) traffic for development
-      usesCleartextTraffic: true,
-      networkSecurityConfig: {
-        domainConfig: [
-          {
-            domain: '192.168.1.6',
-            cleartextTrafficPermitted: true,
-          },
-          {
-            domain: '31.97.206.44',
-            cleartextTrafficPermitted: true,
-          },
-          {
-            domain: 'localhost',
-            cleartextTrafficPermitted: true,
-          },
-        ],
       },
     },
     web: {
@@ -59,14 +33,13 @@ export default {
     },
     plugins: [
       'expo-secure-store',
+      'expo-font',
       [
         'expo-build-properties',
         {
           android: {
+            // Keep using cleartext traffic for development via build-properties
             usesCleartextTraffic: true,
-            networkSecurityConfig: {
-              cleartextTrafficPermitted: true,
-            },
           },
         },
       ],

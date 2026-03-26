@@ -31,9 +31,13 @@ import {
 } from '../../services/waterIntakeService';
 import {
   getProfilePhoto,
-  pickProfilePhoto,
 } from '../../services/profilePhotoService';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
+import {
+  getPendingJoinRequests,
+  acceptJoinRequest,
+  rejectJoinRequest,
+} from '../../api/services/userCommunityChatService';
 
 const { width } = Dimensions.get('window');
 
@@ -50,6 +54,8 @@ const UserDashboardScreen = ({ navigation }) => {
   const [waterIntake, setWaterIntake] = useState(0);
   const [waterGoal, setWaterGoal] = useState(3.0);
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [requestActionLoading, setRequestActionLoading] = useState(false);
   const [diaryTotals, setDiaryTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   
   const profileRef = useRef(null);
@@ -82,6 +88,8 @@ const UserDashboardScreen = ({ navigation }) => {
         setWaterGoal(wGoal);
         const photo = await getProfilePhoto();
         setProfilePhoto(photo);
+        const requests = await getPendingJoinRequests();
+        setPendingRequests(Array.isArray(requests) ? requests : []);
         
         // Load today's diary entry for nutrition breakdown
         try {
@@ -162,6 +170,12 @@ const UserDashboardScreen = ({ navigation }) => {
             // Silent fail for missing diary entries
           }
         }
+        try {
+          const requests = await getPendingJoinRequests();
+          setPendingRequests(Array.isArray(requests) ? requests : []);
+        } catch (error) {
+          // Silent fail for periodic pending request refresh
+        }
       }
     }, 30000);
     return () => { isMounted = false; clearInterval(interval); stopStepTracking(); };
@@ -176,11 +190,29 @@ const UserDashboardScreen = ({ navigation }) => {
   }, [loadProfile]);
 
   const handleStartProfileSetup = () => navigation.navigate('PersonalInfoScreen');
-  const handleProfilePhotoPress = async () => {
-    const photo = await pickProfilePhoto();
-    if (photo) setProfilePhoto(photo);
-  };
   const handleSettingsPress = () => navigation.navigate('ProfileSettingsScreen');
+  const handleCommunityRequestAction = async (request, action) => {
+    if (!request || requestActionLoading) return;
+
+    try {
+      setRequestActionLoading(true);
+      const requestId = request.requestId || request.id || null;
+      const roomId = request.roomId || request.room?.id || null;
+
+      if (action === 'accept') {
+        await acceptJoinRequest(requestId, roomId);
+      } else {
+        await rejectJoinRequest(requestId, roomId);
+      }
+
+      const requests = await getPendingJoinRequests();
+      setPendingRequests(Array.isArray(requests) ? requests : []);
+    } catch (error) {
+      Alert.alert('Action failed', 'Could not update community invite right now. Please try again.');
+    } finally {
+      setRequestActionLoading(false);
+    }
+  };
 
   const calculateBMI = () => {
     if (profile?.weightKg && profile?.heightCm) {
@@ -223,15 +255,20 @@ const UserDashboardScreen = ({ navigation }) => {
             <Text style={styles.greetingText}>Hello,</Text>
             <Text style={styles.userNameText}>{profile?.fullName?.split(' ')[0] || 'Athlete'}</Text>
           </View>
-          <TouchableOpacity onPress={handleProfilePhotoPress} style={styles.profileHeaderImageContainer}>
-          {profilePhoto ? (
+          <View style={styles.profileHeaderImageContainer}>
+            {profilePhoto ? (
               <Image source={{ uri: profilePhoto }} style={styles.headerProfilePhoto} />
-          ) : (
-            <View style={styles.profilePhotoPlaceholder}>
+            ) : (
+              <View style={styles.profilePhotoPlaceholder}>
                 <Ionicons name="person" size={20} color="#10b981" />
-            </View>
-          )}
-        </TouchableOpacity>
+              </View>
+            )}
+            {pendingRequests.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{pendingRequests.length}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -251,6 +288,42 @@ const UserDashboardScreen = ({ navigation }) => {
               </Text>
               <Ionicons name="chevron-forward" size={16} color="#ffffff" />
             </TouchableOpacity>
+          )}
+
+          {pendingRequests.length > 0 && (
+            <View style={styles.notificationCard}>
+              <View style={styles.notificationCardHeader}>
+                <Ionicons name="notifications" size={18} color="#f59e0b" />
+                <Text style={styles.notificationCardTitle}>Gym Community Invites</Text>
+              </View>
+              {pendingRequests.slice(0, 2).map((request, index) => {
+                const roomName = request.roomName || request.room?.name || 'community room';
+                const gymName = request.gymName || request.gym?.name || 'A gym';
+                return (
+                  <View key={request.id || request.requestId || `${roomName}-${index}`} style={styles.inviteItem}>
+                    <Text style={styles.inviteText}>
+                      {gymName} invited you to join "{roomName}"
+                    </Text>
+                    <View style={styles.inviteActions}>
+                      <TouchableOpacity
+                        style={[styles.inviteButton, styles.rejectButton]}
+                        onPress={() => handleCommunityRequestAction(request, 'reject')}
+                        disabled={requestActionLoading}
+                      >
+                        <Text style={styles.rejectButtonText}>Reject</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.inviteButton, styles.acceptButton]}
+                        onPress={() => handleCommunityRequestAction(request, 'accept')}
+                        disabled={requestActionLoading}
+                      >
+                        <Text style={styles.acceptButtonText}>Accept</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           )}
 
           {/* Steps & Activity Hero Card (Inspired by your Screenshot 1 & 4) */}
@@ -402,6 +475,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  notificationBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  notificationBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   headerProfilePhoto: { width: '100%', height: '100%' },
   profilePhotoPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   content: { flex: 1, backgroundColor: '#fcfdfd' },
@@ -417,6 +507,63 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   completionBannerText: { flex: 1, color: '#ffffff', fontSize: 13, fontWeight: '600', marginHorizontal: 10 },
+  notificationCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+  },
+  notificationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  notificationCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  inviteItem: {
+    paddingTop: 8,
+    paddingBottom: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    gap: 10,
+  },
+  inviteText: {
+    color: '#374151',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  inviteActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  inviteButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  rejectButton: {
+    backgroundColor: '#f3f4f6',
+  },
+  rejectButtonText: {
+    color: '#4b5563',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  acceptButton: {
+    backgroundColor: '#10b981',
+  },
+  acceptButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   
   // Hero Activity Card
   heroCard: {
