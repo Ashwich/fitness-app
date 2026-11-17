@@ -12,8 +12,9 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { normalizePhoneToE164 } from '../../services/firebaseAuthService';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
-const GREEN = '#30d158';
+const GREEN = colors.accent;
 
 /**
  * Shown after Google (or any auth without phone).
@@ -62,7 +63,7 @@ export default function LinkPhoneScreen() {
           <TextInput
             style={styles.input}
             placeholder="98765 43210"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.label3}
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
@@ -76,10 +77,10 @@ export default function LinkPhoneScreen() {
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <>
-                <Ionicons name="sync" size={18} color="#fff" />
+                <Ionicons name="sync" size={18} color={colors.onAccent} />
                 <Text style={styles.primaryText}>Save & sync gym</Text>
               </>
             )}
@@ -96,7 +97,7 @@ export default function LinkPhoneScreen() {
 
         {error ? (
           <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={18} color="#B91C1C" />
+            <Ionicons name="alert-circle" size={18} color={colors.red} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(48,209,88,0.15)',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -124,13 +125,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.label,
     textAlign: 'center',
   },
   body: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#6b7280',
+    color: colors.label2,
     textAlign: 'center',
   },
   panel: {
@@ -138,26 +139,26 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(48,209,88,0.35)',
-    backgroundColor: 'rgba(48,209,88,0.06)',
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
     marginTop: 8,
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#166534',
+    color: colors.accent,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.sep,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#111827',
+    color: colors.label,
   },
   primaryBtn: {
     flexDirection: 'row',
@@ -168,13 +169,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
   skipBtn: {
     paddingVertical: 14,
     alignItems: 'center',
   },
   skipText: {
-    color: '#6b7280',
+    color: colors.label2,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -185,9 +186,9 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.redSoft,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.redSoft,
   },
-  errorText: { flex: 1, fontSize: 13, color: '#B91C1C' },
+  errorText: { flex: 1, fontSize: 13, color: colors.red },
 });

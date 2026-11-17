@@ -1,8 +1,9 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { colors } from '../theme/opengym';
 
 export const AppLoader = () => (
   <View style={styles.container}>
-    <ActivityIndicator size="large" color="#2563eb" />
+    <ActivityIndicator size="large" color={colors.accent} />
   </View>
 );
 
@@ -11,7 +12,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
 });
 

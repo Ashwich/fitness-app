@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMyAttendance } from '../api/services/attendanceService';
+import { toLocalISODate } from '../utils/date';
 
 const LOCAL_KEY = 'fitsera_active_days';
 
@@ -10,10 +11,10 @@ const toIso = (value) => {
   }
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return toLocalISODate(d);
 };
 
-export const todayISO = () => new Date().toISOString().slice(0, 10);
+export const todayISO = () => toLocalISODate();
 
 export async function getLocalActiveDays() {
   try {
@@ -95,7 +96,7 @@ export function countActiveDays(activityMap, daysBack = 365) {
   for (let i = 0; i < daysBack; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = toLocalISODate(d);
     if (activityMap[iso]?.level > 0) n += 1;
   }
   return n;

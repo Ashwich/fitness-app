@@ -33,6 +33,8 @@ import {
 } from '../../services/profilePhotoService';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import { markDayActive, todayISO } from '../../services/activityCalendarService';
+import { colors } from '../../theme/opengym';
+import { toLocalISODate } from '../../utils/date';
 
 const { width } = Dimensions.get('window');
 
@@ -87,7 +89,7 @@ const UserDashboardScreen = ({ navigation }) => {
         
         // Load today's diary entry for nutrition breakdown
         try {
-          const today = new Date().toISOString().split('T')[0];
+          const today = toLocalISODate();
           const diaryEntry = await getDiaryEntry(today);
           if (diaryEntry) {
             const totals = {
@@ -228,7 +230,7 @@ const UserDashboardScreen = ({ navigation }) => {
     return (
       <ScreenContainer>
         <View style={styles.loadingContainer}>
-          <Ionicons name="fitness" size={40} color="#30d158" />
+          <Ionicons name="fitness" size={40} color={colors.accent} />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </ScreenContainer>
@@ -252,7 +254,7 @@ const UserDashboardScreen = ({ navigation }) => {
               <Image source={{ uri: profilePhoto }} style={styles.headerProfilePhoto} />
             ) : (
               <View style={styles.profilePhotoPlaceholder}>
-                <Ionicons name="settings-outline" size={20} color="#30d158" />
+                <Ionicons name="settings-outline" size={20} color={colors.accent} />
               </View>
             )}
           </TouchableOpacity>
@@ -261,7 +263,7 @@ const UserDashboardScreen = ({ navigation }) => {
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#30d158" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.mainContainer}>
@@ -269,11 +271,11 @@ const UserDashboardScreen = ({ navigation }) => {
           {/* Profile Completion - Subtle Banner Style */}
         {profileCompletion.percentage < 100 && (
             <TouchableOpacity style={styles.completionBanner} onPress={handleStartProfileSetup}>
-              <Ionicons name="sparkles" size={20} color="#30d158" />
+              <Ionicons name="sparkles" size={20} color={colors.accent} />
               <Text style={styles.completionBannerText}>
                 Complete your profile ({profileCompletion.percentage}%) to unlock insights
               </Text>
-              <Ionicons name="chevron-forward" size={16} color="#30d158" />
+              <Ionicons name="chevron-forward" size={16} color={colors.accent} />
             </TouchableOpacity>
           )}
 
@@ -281,12 +283,12 @@ const UserDashboardScreen = ({ navigation }) => {
           <View style={styles.heroCard}>
             <View style={styles.heroInfo}>
               <View style={styles.heroMetric}>
-                <Ionicons name="footsteps" size={18} color="#30d158" />
+                <Ionicons name="footsteps" size={18} color={colors.accent} />
                 <Text style={styles.heroLabel}>Steps Today</Text>
                 <Text style={styles.heroValue}>{todaySteps.toLocaleString()}</Text>
               </View>
               <View style={[styles.heroMetric, { marginTop: 20 }]}>
-                <Ionicons name="flame" size={18} color="#ef4444" />
+                <Ionicons name="flame" size={18} color={colors.red} />
                 <Text style={styles.heroLabel}>Active Burn</Text>
                 <Text style={styles.heroValue}>{caloriesBurned} kcal</Text>
               </View>
@@ -317,17 +319,17 @@ const UserDashboardScreen = ({ navigation }) => {
             <View style={styles.smallMetricCard}>
               <Text style={styles.smallLabel}>BMI</Text>
               <Text style={styles.smallValue}>{calculateBMI()}</Text>
-              <View style={[styles.indicator, { backgroundColor: '#8b5cf6' }]} />
+              <View style={[styles.indicator, { backgroundColor: colors.purple }]} />
               </View>
             <View style={styles.smallMetricCard}>
               <Text style={styles.smallLabel}>Step Goal</Text>
               <Text style={styles.smallValue}>{stepsGoal.toLocaleString()}</Text>
-              <View style={[styles.indicator, { backgroundColor: '#30d158' }]} />
+              <View style={[styles.indicator, { backgroundColor: colors.accent }]} />
             </View>
             <View style={styles.smallMetricCard}>
               <Text style={styles.smallLabel}>Target Calories</Text>
               <Text style={styles.smallValue}>{profile?.calorieGoals?.dailyCalories || 2000}</Text>
-              <View style={[styles.indicator, { backgroundColor: '#f59e0b' }]} />
+              <View style={[styles.indicator, { backgroundColor: colors.orange }]} />
               </View>
             </View>
 
@@ -338,28 +340,28 @@ const UserDashboardScreen = ({ navigation }) => {
             >
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Nutrition Breakdown</Text>
-              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={18} color={colors.label3} />
             </View>
             
             <View style={styles.macroContainer}>
               <View style={styles.macroItem}>
                 <Text style={styles.macroLabel}>Protein</Text>
                 <View style={styles.macroBarBg}>
-                  <View style={[styles.macroBarFill, { width: `${proteinProgress}%`, backgroundColor: '#3b82f6' }]} />
+                  <View style={[styles.macroBarFill, { width: `${proteinProgress}%`, backgroundColor: colors.blue }]} />
                 </View>
                 <Text style={styles.macroValue}>{Math.round(diaryTotals.protein)}g / {goals.protein || 0}g</Text>
               </View>
               <View style={styles.macroItem}>
                 <Text style={styles.macroLabel}>Carbs</Text>
                 <View style={styles.macroBarBg}>
-                  <View style={[styles.macroBarFill, { width: `${carbsProgress}%`, backgroundColor: '#ec4899' }]} />
+                  <View style={[styles.macroBarFill, { width: `${carbsProgress}%`, backgroundColor: colors.pink }]} />
                 </View>
                 <Text style={styles.macroValue}>{Math.round(diaryTotals.carbs)}g / {goals.carbs || 0}g</Text>
               </View>
               <View style={styles.macroItem}>
                 <Text style={styles.macroLabel}>Fats</Text>
                 <View style={styles.macroBarBg}>
-                  <View style={[styles.macroBarFill, { width: `${fatProgress}%`, backgroundColor: '#f59e0b' }]} />
+                  <View style={[styles.macroBarFill, { width: `${fatProgress}%`, backgroundColor: colors.orange }]} />
                 </View>
                 <Text style={styles.macroValue}>{Math.round(diaryTotals.fat)}g / {goals.fat || 0}g</Text>
               </View>
@@ -369,19 +371,19 @@ const UserDashboardScreen = ({ navigation }) => {
           {/* Water & Attendance Horizontal Row */}
           <View style={styles.row}>
             <TouchableOpacity
-              style={[styles.halfCard, { backgroundColor: '#1c1c1e' }]}
+              style={[styles.halfCard, { backgroundColor: colors.surface }]}
               onPress={() => navigation.navigate('WaterIntakeScreen')}
             >
-                <Ionicons name="water" size={24} color="#3b82f6" />
+                <Ionicons name="water" size={24} color={colors.blue} />
               <Text style={styles.halfCardTitle}>Hydration</Text>
               <Text style={styles.halfCardValue}>{waterIntake.toFixed(1)}L / {waterGoal.toFixed(1)}L</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.halfCard, { backgroundColor: '#1c1c1e' }]}
+              style={[styles.halfCard, { backgroundColor: colors.surface }]}
               onPress={() => navigation.navigate('AttendanceScreen')}
             >
-              <Ionicons name="qr-code" size={24} color="#8b5cf6" />
+              <Ionicons name="qr-code" size={24} color={colors.accent} />
               <Text style={styles.halfCardTitle}>Gym Entry</Text>
               <Text style={styles.halfCardValue}>Check In</Text>
             </TouchableOpacity>
@@ -389,7 +391,7 @@ const UserDashboardScreen = ({ navigation }) => {
 
           {/* Settings / Profile Footer */}
           <TouchableOpacity style={styles.footerButton} onPress={handleSettingsPress}>
-             <Ionicons name="settings-sharp" size={20} color="#6b7280" />
+             <Ionicons name="settings-sharp" size={20} color={colors.label2} />
              <Text style={styles.footerButtonText}>Account Settings</Text>
             </TouchableOpacity>
 
@@ -401,9 +403,9 @@ const UserDashboardScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: 'rgba(235,235,245,0.6)', fontSize: 16, marginTop: 10 },
+  loadingText: { color: colors.label2, fontSize: 16, marginTop: 10 },
   header: {
-    backgroundColor: '#000000',
+    backgroundColor: colors.bg,
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 25,
@@ -413,15 +415,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  greetingText: { fontSize: 16, color: 'rgba(235,235,245,0.6)', fontWeight: '500' },
-  userNameText: { fontSize: 24, fontWeight: '600', color: '#ffffff' },
+  greetingText: { fontSize: 16, color: colors.label2, fontWeight: '500' },
+  userNameText: { fontSize: 24, fontWeight: '600', color: colors.label },
   profileHeaderImageContainer: {
     width: 45,
     height: 45,
     borderRadius: 15,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: colors.surface2,
     borderWidth: 2,
-    borderColor: '#30d158',
+    borderColor: colors.accent,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
@@ -433,38 +435,38 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.red,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 5,
   },
   notificationBadgeText: {
-    color: '#ffffff',
+    color: colors.label,
     fontSize: 11,
     fontWeight: '600',
   },
   headerProfilePhoto: { width: '100%', height: '100%' },
   profilePhotoPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  content: { flex: 1, backgroundColor: '#000000' },
+  content: { flex: 1, backgroundColor: colors.bg },
   mainContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
   
   // Banner
   completionBanner: {
-    backgroundColor: '#30d158',
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 12,
     marginBottom: 20,
   },
-  completionBannerText: { flex: 1, color: '#ffffff', fontSize: 13, fontWeight: '600', marginHorizontal: 10 },
+  completionBannerText: { flex: 1, color: colors.label, fontSize: 13, fontWeight: '600', marginHorizontal: 10 },
   notificationCard: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#fef3c7',
+    borderColor: colors.orangeSoft,
   },
   notificationCardHeader: {
     flexDirection: 'row',
@@ -475,17 +477,17 @@ const styles = StyleSheet.create({
   notificationCardTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.label,
   },
   inviteItem: {
     paddingTop: 8,
     paddingBottom: 10,
     borderTopWidth: 1,
-    borderTopColor: '#2c2c2e',
+    borderTopColor: colors.sep,
     gap: 10,
   },
   inviteText: {
-    color: '#374151',
+    color: colors.label2,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -500,30 +502,30 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   rejectButton: {
-    backgroundColor: '#2c2c2e',
+    backgroundColor: colors.surface2,
   },
   rejectButtonText: {
-    color: '#4b5563',
+    color: colors.label2,
     fontWeight: '600',
     fontSize: 12,
   },
   acceptButton: {
-    backgroundColor: '#30d158',
+    backgroundColor: colors.accent,
   },
   acceptButtonText: {
-    color: '#ffffff',
+    color: colors.label,
     fontWeight: '600',
     fontSize: 12,
   },
   
   // Hero Activity Card
   heroCard: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05,
     shadowRadius: 15,
@@ -532,19 +534,19 @@ const styles = StyleSheet.create({
   },
   heroInfo: { flex: 1 },
   heroMetric: { gap: 2 },
-  heroLabel: { fontSize: 12, color: 'rgba(235,235,245,0.32)', fontWeight: '600', textTransform: 'uppercase' },
-  heroValue: { fontSize: 22, fontWeight: '600', color: '#ffffff' },
+  heroLabel: { fontSize: 12, color: colors.label3, fontWeight: '600', textTransform: 'uppercase' },
+  heroValue: { fontSize: 22, fontWeight: '600', color: colors.label },
   progressCircleContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 8,
-    borderColor: '#2c2c2e',
+    borderColor: colors.sep,
     justifyContent: 'center',
     alignItems: 'center',
   },
   circleGraphic: { alignItems: 'center' },
-  circleSubtext: { fontSize: 10, color: 'rgba(235,235,245,0.32)', fontWeight: '600' },
+  circleSubtext: { fontSize: 10, color: colors.label3, fontWeight: '600' },
 
   // Grid
   metricsGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
@@ -561,7 +563,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 8,
-    borderColor: '#2c2c2e',
+    borderColor: colors.sep,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -573,7 +575,7 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     borderWidth: 8,
     borderColor: 'transparent',
-    borderTopColor: '#30d158',
+    borderTopColor: colors.accent,
   },
   circularProgressInner: {
     width: 104,
@@ -581,56 +583,56 @@ const styles = StyleSheet.create({
     borderRadius: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: colors.surface,
   },
   circularProgressValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#30d158',
+    color: colors.accent,
   },
   circularProgressLabel: {
     fontSize: 10,
-    color: 'rgba(235,235,245,0.32)',
+    color: colors.label3,
     fontWeight: '600',
     marginTop: 2,
   },
   smallMetricCard: {
     flex: 1,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 14,
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOpacity: 0.03,
     elevation: 2,
   },
-  smallLabel: { fontSize: 12, color: 'rgba(235,235,245,0.32)', fontWeight: '600' },
-  smallValue: { fontSize: 18, fontWeight: '600', color: '#ffffff', marginTop: 4 },
+  smallLabel: { fontSize: 12, color: colors.label3, fontWeight: '600' },
+  smallValue: { fontSize: 18, fontWeight: '600', color: colors.label, marginTop: 4 },
   indicator: { height: 3, width: 20, borderRadius: 2, marginTop: 8 },
 
   // Section Cards
   sectionCard: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOpacity: 0.03,
     elevation: 2,
   },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: colors.label },
   macroContainer: { flexDirection: 'row', gap: 15 },
   macroItem: { flex: 1 },
-  macroLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(235,235,245,0.6)', marginBottom: 5 },
-  macroBarBg: { height: 6, backgroundColor: '#2c2c2e', borderRadius: 3, overflow: 'hidden', marginBottom: 5 },
+  macroLabel: { fontSize: 11, fontWeight: '600', color: colors.label2, marginBottom: 5 },
+  macroBarBg: { height: 6, backgroundColor: colors.surface2, borderRadius: 3, overflow: 'hidden', marginBottom: 5 },
   macroBarFill: { height: '100%', borderRadius: 3 },
-  macroValue: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
+  macroValue: { fontSize: 14, fontWeight: '600', color: colors.label },
 
   // Row Helpers
   row: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   halfCard: { flex: 1, padding: 20, borderRadius: 14, gap: 8 },
-  halfCardTitle: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
-  halfCardValue: { fontSize: 13, color: 'rgba(235,235,245,0.6)', fontWeight: '500' },
+  halfCardTitle: { fontSize: 14, fontWeight: '600', color: colors.label },
+  halfCardValue: { fontSize: 13, color: colors.label2, fontWeight: '500' },
   
   footerButton: {
     flexDirection: 'row',
@@ -640,7 +642,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-  footerButtonText: { color: 'rgba(235,235,245,0.6)', fontWeight: '600', fontSize: 14 },
+  footerButtonText: { color: colors.label2, fontWeight: '600', fontSize: 14 },
 });
 
 export default UserDashboardScreen;

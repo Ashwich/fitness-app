@@ -11,8 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
-const PURPLE = '#9333ea';
+const PURPLE = colors.accent;
 
 /** Gym tab placeholder when the member has no linked gym. */
 const GymWaitScreen = () => {
@@ -60,10 +61,10 @@ const GymWaitScreen = () => {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Ionicons name="link" size={18} color="#fff" />
+              <Ionicons name="link" size={18} color={colors.onAccent} />
               <Text style={styles.btnText}>Retry link</Text>
             </>
           )}
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f3e8ff',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -93,12 +94,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.label,
   },
   body: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#6b7280',
+    color: colors.label2,
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
   },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  btnText: { color: colors.onAccent, fontWeight: '700', fontSize: 16 },
   disabled: { opacity: 0.7 },
 });
 

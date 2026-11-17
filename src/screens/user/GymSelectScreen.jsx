@@ -12,8 +12,9 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { selectGym, getGymMatches } from '../../api/services/attendanceService';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
-const PURPLE = '#9333ea';
+const PURPLE = colors.accent;
 
 /**
  * Shown when phone matches members at more than one gym.
@@ -106,7 +107,7 @@ const GymSelectScreen = () => {
                 {busy ? (
                   <ActivityIndicator color={PURPLE} />
                 ) : (
-                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                  <Ionicons name="chevron-forward" size={20} color={colors.label3} />
                 )}
               </TouchableOpacity>
             );
@@ -137,9 +138,9 @@ const GymSelectScreen = () => {
 
 const styles = StyleSheet.create({
   content: { padding: 24, paddingTop: 56, gap: 12, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '800', color: '#111827' },
-  subtitle: { fontSize: 15, lineHeight: 22, color: '#64748b', marginBottom: 8 },
-  empty: { color: '#94a3b8', marginTop: 12 },
+  title: { fontSize: 26, fontWeight: '800', color: colors.label },
+  subtitle: { fontSize: 15, lineHeight: 22, color: colors.label2, marginBottom: 8 },
+  empty: { color: colors.label3, marginTop: 12 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -147,21 +148,21 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
-    backgroundColor: '#faf5ff',
+    borderColor: colors.accentSoft,
+    backgroundColor: colors.accentSoft,
   },
   iconWrap: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardBody: { flex: 1, minWidth: 0 },
-  gymName: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  memberName: { fontSize: 13, color: '#64748b', marginTop: 2 },
-  error: { color: '#B91C1C', fontSize: 13, marginTop: 4 },
+  gymName: { fontSize: 16, fontWeight: '800', color: colors.label },
+  memberName: { fontSize: 13, color: colors.label2, marginTop: 2 },
+  error: { color: colors.red, fontSize: 13, marginTop: 4 },
   secondary: {
     marginTop: 8,
     paddingVertical: 12,
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   },
   secondaryText: { color: PURPLE, fontWeight: '700' },
   logout: { paddingVertical: 12, alignItems: 'center' },
-  logoutText: { color: '#94a3b8', fontWeight: '600' },
+  logoutText: { color: colors.label3, fontWeight: '600' },
 });
 
 export default GymSelectScreen;

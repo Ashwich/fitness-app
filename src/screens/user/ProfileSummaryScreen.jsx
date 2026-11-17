@@ -17,6 +17,7 @@ import { enrichWorkoutDays, STARTER_PLAN_DAYS } from '../../data/exercises';
 import { computeAutoGoals } from '../../utils/autoGoals';
 import { setWaterGoal } from '../../services/waterIntakeService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors } from '../../theme/opengym';
 
 const ProfileSummaryScreen = ({ navigation, route }) => {
   const userProfile = route.params?.userProfile || {};
@@ -165,11 +166,11 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
   };
 
   const getBMIColor = (bmi) => {
-    if (!bmi) return '#6b7280';
-    if (bmi < 18.5) return '#3b82f6';
-    if (bmi < 25) return '#10b981';
-    if (bmi < 30) return '#f59e0b';
-    return '#ef4444';
+    if (!bmi) return colors.label2;
+    if (bmi < 18.5) return colors.blue;
+    if (bmi < 25) return colors.accent;
+    if (bmi < 30) return colors.orange;
+    return colors.red;
   };
 
   const getGoalLabel = (goalId) => {
@@ -205,7 +206,7 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
     <ScreenContainer>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color={colors.label} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile Summary</Text>
         <View style={styles.placeholder} />
@@ -337,7 +338,7 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
               <Text style={styles.macroSectionTitle}>Macronutrients</Text>
               <View style={styles.macroRow}>
                 <View style={styles.macroBox}>
-                  <View style={[styles.macroIndicator, { backgroundColor: '#ef4444' }]} />
+                  <View style={[styles.macroIndicator, { backgroundColor: colors.red }]} />
                   <Text style={styles.macroLabel}>Protein</Text>
                   <Text style={styles.macroValue}>
                     {calorieGoals?.protein || 0}g
@@ -354,7 +355,7 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
                   </Text>
                 </View>
                 <View style={styles.macroBox}>
-                  <View style={[styles.macroIndicator, { backgroundColor: '#3b82f6' }]} />
+                  <View style={[styles.macroIndicator, { backgroundColor: colors.blue }]} />
                   <Text style={styles.macroLabel}>Carbs</Text>
                   <Text style={styles.macroValue}>
                     {calorieGoals?.carbs || 0}g
@@ -371,7 +372,7 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
                   </Text>
                 </View>
                 <View style={styles.macroBox}>
-                  <View style={[styles.macroIndicator, { backgroundColor: '#f59e0b' }]} />
+                  <View style={[styles.macroIndicator, { backgroundColor: colors.orange }]} />
                   <Text style={styles.macroLabel}>Fat</Text>
                   <Text style={styles.macroValue}>
                     {calorieGoals?.fat || 0}g
@@ -413,9 +414,9 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.bg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.sep,
   },
   backButton: {
     width: 40,
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
   },
   placeholder: {
     width: 40,
@@ -436,31 +437,31 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     margin: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.sep,
   },
   welcomeTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 8,
   },
   welcomeText: {
     fontSize: 15,
-    color: '#6b7280',
+    color: colors.label2,
     lineHeight: 22,
   },
   infoCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.sep,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -471,17 +472,17 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
   },
   editButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
   },
   editButtonText: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.label2,
     fontWeight: '500',
   },
   cardContent: {
@@ -493,18 +494,18 @@ const styles = StyleSheet.create({
   },
   infoItem: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
   },
   infoLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 6,
   },
   infoValue: {
     fontSize: 15,
-    color: '#111827',
+    color: colors.label,
     fontWeight: '600',
   },
   statsGrid: {
@@ -513,41 +514,41 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
   statLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 4,
   },
   statCategory: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.label3,
   },
   primaryGoalBox: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
   },
   primaryGoalLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 8,
   },
   primaryGoalValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
   },
   goalDetailsRow: {
     flexDirection: 'row',
@@ -555,43 +556,43 @@ const styles = StyleSheet.create({
   },
   goalDetail: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
   },
   goalDetailLabel: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.label3,
     marginBottom: 6,
     textAlign: 'center',
   },
   goalDetailValue: {
     fontSize: 13,
-    color: '#111827',
+    color: colors.label,
     fontWeight: '600',
     textAlign: 'center',
   },
   calorieBox: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
   },
   calorieLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 8,
   },
   calorieValue: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 4,
   },
   calorieUnit: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.label3,
   },
   macroContainer: {
     marginTop: 4,
@@ -599,7 +600,7 @@ const styles = StyleSheet.create({
   macroSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 12,
   },
   macroRow: {
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
   },
   macroBox: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -621,24 +622,24 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 6,
   },
   macroValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 4,
   },
   macroPercent: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.label3,
   },
   footer: {
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.bg,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.sep,
   },
 });
 

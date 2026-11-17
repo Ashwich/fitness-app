@@ -19,9 +19,11 @@ import {
   dayInCycle,
   isPeriodDay,
 } from '../../services/periodTrackingService';
+import { colors } from '../../theme/opengym';
+import { toLocalISODate } from '../../utils/date';
 
-const PURPLE = '#9333ea';
-const ROSE = '#e11d48';
+const PURPLE = colors.purple;
+const ROSE = colors.pink;
 
 const PeriodTrackingScreen = ({ navigation }) => {
   const [settings, setSettings] = useState(null);
@@ -54,7 +56,7 @@ const PeriodTrackingScreen = ({ navigation }) => {
   };
 
   const markPeriodStartedToday = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const next = await savePeriodSettings({
       ...settings,
       enabled: true,
@@ -80,7 +82,7 @@ const PeriodTrackingScreen = ({ navigation }) => {
     <ScreenContainer>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-          <Ionicons name="chevron-back" size={26} color="#111827" />
+          <Ionicons name="chevron-back" size={26} color={colors.label} />
         </TouchableOpacity>
         <Text style={styles.title}>Period tracking</Text>
         <View style={{ width: 36 }} />
@@ -96,7 +98,7 @@ const PeriodTrackingScreen = ({ navigation }) => {
             <Switch
               value={settings.enabled}
               onValueChange={(enabled) => update({ enabled })}
-              trackColor={{ true: ROSE, false: '#e5e7eb' }}
+              trackColor={{ true: ROSE, false: colors.surface3 }}
             />
           </View>
         </View>
@@ -122,7 +124,7 @@ const PeriodTrackingScreen = ({ navigation }) => {
                 value={settings.lastPeriodStart || ''}
                 onChangeText={(lastPeriodStart) => update({ lastPeriodStart })}
                 placeholder="2026-09-01"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.label3}
               />
               <TouchableOpacity style={styles.secondaryBtn} onPress={markPeriodStartedToday}>
                 <Text style={styles.secondaryText}>Started today</Text>
@@ -158,7 +160,7 @@ const PeriodTrackingScreen = ({ navigation }) => {
                 value={settings.notes || ''}
                 onChangeText={(notes) => update({ notes })}
                 placeholder="Symptoms, energy, etc."
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.label3}
               />
             </View>
           </>
@@ -185,42 +187,42 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  title: { fontSize: 18, fontWeight: '800', color: colors.label },
   body: { padding: 16, gap: 12, paddingBottom: 40 },
   center: { flex: 1 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#fce7f3',
+    borderColor: colors.pinkSoft,
     gap: 8,
   },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  cardSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.label },
+  cardSub: { fontSize: 12, color: colors.label2, marginTop: 2 },
   statusCard: {
-    backgroundColor: '#faf5ff',
+    backgroundColor: colors.purpleSoft,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: colors.purpleSoft,
     alignItems: 'center',
   },
-  statusPeriod: { backgroundColor: '#fff1f2', borderColor: '#fecdd3' },
-  statusLabel: { fontSize: 12, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase' },
-  statusValue: { fontSize: 28, fontWeight: '800', color: '#111827', marginTop: 6 },
+  statusPeriod: { backgroundColor: colors.pinkSoft, borderColor: colors.pinkSoft },
+  statusLabel: { fontSize: 12, fontWeight: '700', color: colors.label3, textTransform: 'uppercase' },
+  statusValue: { fontSize: 28, fontWeight: '800', color: colors.label, marginTop: 6 },
   statusNext: { fontSize: 13, color: ROSE, marginTop: 8, fontWeight: '600' },
-  label: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase' },
+  label: { fontSize: 12, fontWeight: '700', color: colors.label2, textTransform: 'uppercase' },
   input: {
     borderWidth: 1,
-    borderColor: '#fce7f3',
+    borderColor: colors.pinkSoft,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: colors.label,
+    backgroundColor: colors.surface2,
   },
   primaryBtn: {
     backgroundColor: ROSE,
@@ -229,10 +231,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  primaryText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  primaryText: { color: colors.label, fontWeight: '800', fontSize: 15 },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: '#fbcfe8',
+    borderColor: colors.pinkSoft,
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',

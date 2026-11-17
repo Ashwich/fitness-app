@@ -22,6 +22,7 @@ import {
   setupWaterReminders,
   areRemindersEnabled,
 } from '../../services/waterIntakeService';
+import { colors } from '../../theme/opengym';
 
 const { width } = Dimensions.get('window');
 
@@ -95,7 +96,7 @@ const WaterIntakeScreen = ({ navigation }) => {
       {/* Refined Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="close-outline" size={30} color="#111827" />
+          <Ionicons name="close-outline" size={30} color={colors.label} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hydration</Text>
         <TouchableOpacity onPress={handleSaveGoal}>
@@ -110,7 +111,7 @@ const WaterIntakeScreen = ({ navigation }) => {
                 <Text style={styles.intakeValue}>{todayIntake.toFixed(1)}</Text>
                 <Text style={styles.intakeUnit}>Liters Today</Text>
                 <View style={styles.progressPill}>
-                    <Ionicons name="water" size={14} color="#3b82f6" />
+                    <Ionicons name="water" size={14} color={colors.blue} />
                     <Text style={styles.progressPercent}>{Math.round(getProgressPercentage())}% of goal</Text>
                 </View>
             </View>
@@ -129,8 +130,8 @@ const WaterIntakeScreen = ({ navigation }) => {
                 style={styles.actionButton}
                 onPress={() => handleAddWater(amount)}
               >
-                <View style={[styles.iconCircle, { backgroundColor: amount >= 1 ? '#3b82f6' : '#dbeafe' }]}>
-                    <Ionicons name="add" size={24} color={amount >= 1 ? '#fff' : '#3b82f6'} />
+                <View style={[styles.iconCircle, { backgroundColor: amount >= 1 ? colors.blue : colors.blueSoft }]}>
+                    <Ionicons name="add" size={24} color={amount >= 1 ? colors.label : colors.blue} />
                 </View>
                 <Text style={styles.actionLabel}>+{amount}L</Text>
               </TouchableOpacity>
@@ -147,8 +148,8 @@ const WaterIntakeScreen = ({ navigation }) => {
                 <Switch
                   value={remindersEnabled}
                   onValueChange={handleToggleReminders}
-                  trackColor={{ false: '#e5e7eb', true: '#3b82f6' }}
-                  thumbColor="#ffffff"
+                  trackColor={{ false: colors.surface3, true: colors.blue }}
+                  thumbColor={colors.label}
                 />
             </View>
 
@@ -180,7 +181,7 @@ const WaterIntakeScreen = ({ navigation }) => {
                    return (
                     <View key={date} style={styles.chartBarWrapper}>
                         <View style={styles.barBackground}>
-                            <View style={[styles.barFill, { height: `${height}%`, backgroundColor: height >= 100 ? '#10b981' : '#3b82f6' }]} />
+                            <View style={[styles.barFill, { height: `${height}%`, backgroundColor: height >= 100 ? colors.accent : colors.blue }]} />
                         </View>
                         <Text style={styles.barLabel}>{getDayName(date)}</Text>
                     </View>
@@ -201,15 +202,15 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 24,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
-  saveActionText: { color: '#3b82f6', fontWeight: '700', fontSize: 16 },
-  content: { flex: 1, backgroundColor: '#f8fafc' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: colors.label },
+  saveActionText: { color: colors.blue, fontWeight: '700', fontSize: 16 },
+  content: { flex: 1, backgroundColor: colors.bg },
   
   heroSection: {
     height: 280,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
     flexDirection: 'row',
@@ -220,31 +221,31 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   intakeDisplay: { zIndex: 2 },
-  intakeValue: { fontSize: 64, fontWeight: '900', color: '#1e293b' },
-  intakeUnit: { fontSize: 18, color: '#64748b', marginTop: -8, fontWeight: '500' },
+  intakeValue: { fontSize: 64, fontWeight: '900', color: colors.label },
+  intakeUnit: { fontSize: 18, color: colors.label2, marginTop: -8, fontWeight: '500' },
   progressPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.blueSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     marginTop: 16,
     alignSelf: 'flex-start',
   },
-  progressPercent: { marginLeft: 6, fontSize: 14, fontWeight: '600', color: '#3b82f6' },
+  progressPercent: { marginLeft: 6, fontSize: 14, fontWeight: '600', color: colors.blue },
   
   mainProgressBarContainer: {
     width: 60,
     height: '70%',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surface2,
     borderRadius: 30,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   mainProgressBarFill: {
     width: '100%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.blue,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -257,11 +258,11 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOpacity: 0.04,
     shadowRadius: 10,
     elevation: 2,
@@ -274,25 +275,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  actionLabel: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+  actionLabel: { fontSize: 14, fontWeight: '700', color: colors.label },
 
   settingsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginHorizontal: 24,
     borderRadius: 24,
     padding: 20,
     marginBottom: 24,
   },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  settingTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
-  settingSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 16 },
+  settingTitle: { fontSize: 16, fontWeight: '700', color: colors.label },
+  settingSubtitle: { fontSize: 13, color: colors.label3, marginTop: 2 },
+  divider: { height: 1, backgroundColor: colors.sep, marginVertical: 16 },
   goalInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   compactInput: { width: 80, marginBottom: 0 },
-  unitText: { marginLeft: 10, color: '#64748b', fontWeight: '600' },
+  unitText: { marginLeft: 10, color: colors.label2, fontWeight: '600' },
 
   statsContainer: { paddingHorizontal: 24, marginBottom: 40 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b', marginBottom: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.label, marginBottom: 20 },
   chartContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -303,13 +304,13 @@ const styles = StyleSheet.create({
   barBackground: {
     width: 12,
     height: 100,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   barFill: { width: '100%', borderRadius: 10 },
-  barLabel: { marginTop: 10, fontSize: 12, fontWeight: '700', color: '#94a3b8' },
+  barLabel: { marginTop: 10, fontSize: 12, fontWeight: '700', color: colors.label3 },
 });
 
 export default WaterIntakeScreen;

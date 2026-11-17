@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AppLoader } from '../components/AppLoader';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -27,6 +27,20 @@ import DietPlansScreen from '../screens/user/DietPlansScreen';
 import WorkoutPlanScreen from '../screens/user/WorkoutPlanScreen';
 import PeriodTrackingScreen from '../screens/user/PeriodTrackingScreen';
 import { useAuth } from '../context/AuthContext';
+import { colors } from '../theme/opengym';
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.accent,
+    background: colors.bg,
+    card: colors.bgEl,
+    text: colors.label,
+    border: colors.sep,
+    notification: colors.red,
+  },
+};
 
 const AuthStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
@@ -42,11 +56,13 @@ const AuthNavigator = () => (
     screenOptions={{
       headerShadowVisible: false,
       headerTitleAlign: 'center',
+      headerStyle: { backgroundColor: colors.bg },
+      headerTintColor: colors.label,
+      contentStyle: { backgroundColor: colors.bg },
     }}
   >
-    <AuthStack.Screen name="Homepage" component={HomepageScreen} options={{ title: 'Welcome' }} />
+    <AuthStack.Screen name="Homepage" component={HomepageScreen} options={{ headerShown: false }} />
     <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Sign in' }} />
-    <AuthStack.Screen name="UserDashboard" component={UserDashboardScreen} options={{ title: 'User Dashboard' }} />
   </AuthStack.Navigator>
 );
 
@@ -113,8 +129,8 @@ const AppTabNavigator = () => (
   <AppTabs.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarActiveTintColor: '#30d158',
-      tabBarInactiveTintColor: 'rgba(235,235,245,0.32)',
+      tabBarActiveTintColor: colors.accent,
+      tabBarInactiveTintColor: colors.label3,
       tabBarStyle: {
         paddingBottom: 8,
         paddingTop: 8,
@@ -195,7 +211,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       {token ? <AuthenticatedNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

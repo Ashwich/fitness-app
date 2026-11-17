@@ -18,8 +18,9 @@ import {
   formatFirebaseAuthError,
 } from '../../services/firebaseAuthService';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
-const GREEN = '#30d158';
+const GREEN = colors.accent;
 
 /**
  * Phone OTP + Google sign-in.
@@ -124,7 +125,7 @@ export default function FirebaseAuthButtons() {
 
   const ErrorBox = error ? (
     <View style={styles.errorBox}>
-      <Ionicons name="alert-circle" size={18} color="#B91C1C" />
+      <Ionicons name="alert-circle" size={18} color={colors.red} />
       <Text style={styles.errorText}>{error}</Text>
     </View>
   ) : null;
@@ -145,14 +146,14 @@ export default function FirebaseAuthButtons() {
           }}
           activeOpacity={0.85}
         >
-          <Ionicons name="call" size={22} color="#fff" />
+          <Ionicons name="call" size={22} color={colors.onAccent} />
           <View style={styles.methodTextWrap}>
             <Text style={styles.methodTitle}>Continue with phone</Text>
             <Text style={styles.methodSub}>
               {useDevPhone ? 'Dev login in Expo Go' : 'OTP verification'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
+          <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.6)" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -162,17 +163,17 @@ export default function FirebaseAuthButtons() {
           activeOpacity={0.85}
         >
           {loading && mode === 'choose' ? (
-            <ActivityIndicator color="#111827" />
+            <ActivityIndicator color={colors.label} />
           ) : (
             <>
-              <Ionicons name="logo-google" size={22} color="#111827" />
+              <Ionicons name="logo-google" size={22} color={colors.label} />
               <View style={styles.methodTextWrap}>
                 <Text style={[styles.methodTitle, styles.googleTitle]}>Continue with Google</Text>
                 <Text style={[styles.methodSub, styles.googleSub]}>
                   {firebaseReady ? 'Then optional gym phone' : 'Requires native build'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+              <Ionicons name="chevron-forward" size={20} color={colors.label2} />
             </>
           )}
         </TouchableOpacity>
@@ -187,7 +188,7 @@ export default function FirebaseAuthButtons() {
     return (
       <View style={styles.wrap}>
         <TouchableOpacity style={styles.backRow} onPress={() => setMode('choose')}>
-          <Ionicons name="arrow-back" size={18} color="#6b7280" />
+          <Ionicons name="arrow-back" size={18} color={colors.label2} />
           <Text style={styles.backText}>Other options</Text>
         </TouchableOpacity>
 
@@ -201,7 +202,7 @@ export default function FirebaseAuthButtons() {
           <TextInput
             style={styles.input}
             placeholder="98765 43210"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.label3}
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
@@ -214,7 +215,7 @@ export default function FirebaseAuthButtons() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.primaryText}>Continue</Text>
             )}
@@ -241,7 +242,7 @@ export default function FirebaseAuthButtons() {
           setError('');
         }}
       >
-        <Ionicons name="arrow-back" size={18} color="#6b7280" />
+        <Ionicons name="arrow-back" size={18} color={colors.label2} />
         <Text style={styles.backText}>Other options</Text>
       </TouchableOpacity>
 
@@ -256,7 +257,7 @@ export default function FirebaseAuthButtons() {
           <TextInput
             style={styles.input}
             placeholder="98765 43210"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.label3}
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
@@ -269,7 +270,7 @@ export default function FirebaseAuthButtons() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.primaryText}>Send OTP</Text>
             )}
@@ -281,7 +282,7 @@ export default function FirebaseAuthButtons() {
           <TextInput
             style={styles.input}
             placeholder="6-digit OTP"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.label3}
             keyboardType="number-pad"
             value={otp}
             onChangeText={setOtp}
@@ -295,7 +296,7 @@ export default function FirebaseAuthButtons() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={styles.primaryText}>Verify & continue</Text>
               )}
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
   lead: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#64748B',
+    color: colors.label2,
     marginBottom: 4,
   },
   backRow: {
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
-  backText: { fontSize: 14, color: '#6b7280', fontWeight: '600' },
+  backText: { fontSize: 14, color: colors.label2, fontWeight: '600' },
   methodBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,27 +347,27 @@ const styles = StyleSheet.create({
     backgroundColor: GREEN,
   },
   googleMethod: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.sep,
   },
   methodTextWrap: { flex: 1 },
   methodTitle: {
-    color: '#fff',
+    color: colors.onAccent,
     fontWeight: '700',
     fontSize: 16,
   },
   methodSub: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(0,0,0,0.6)',
     fontSize: 12,
     marginTop: 2,
   },
-  googleTitle: { color: '#111827' },
-  googleSub: { color: '#6b7280' },
+  googleTitle: { color: colors.label },
+  googleSub: { color: colors.label2 },
   devBanner: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#b45309',
+    color: colors.orange,
     textAlign: 'center',
   },
   panel: {
@@ -374,25 +375,25 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(48,209,88,0.35)',
-    backgroundColor: 'rgba(48,209,88,0.06)',
+    borderColor: colors.accentLine,
+    backgroundColor: colors.accentSoft,
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#166534',
+    color: colors.accent,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.sep,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#111827',
+    color: colors.label,
   },
   row: { flexDirection: 'row', gap: 8 },
   primaryBtn: {
@@ -402,15 +403,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  primaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
   cancelBtn: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.sep,
     borderRadius: 12,
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  cancelText: { color: '#374151', fontWeight: '600', fontSize: 13 },
+  cancelText: { color: colors.label2, fontWeight: '600', fontSize: 13 },
   disabled: { opacity: 0.7 },
   errorBox: {
     flexDirection: 'row',
@@ -418,9 +419,9 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.redSoft,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.redSoft,
   },
-  errorText: { flex: 1, fontSize: 13, color: '#B91C1C' },
+  errorText: { flex: 1, fontSize: 13, color: colors.red },
 });

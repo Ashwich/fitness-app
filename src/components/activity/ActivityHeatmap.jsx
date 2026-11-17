@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { colors, radii } from '../../theme/opengym';
 import { MONTHS_SHORT, todayISO } from '../../services/activityCalendarService';
+import { toLocalISODate } from '../../utils/date';
 
 const CELL = 11;
 const GAP = 3;
@@ -47,7 +48,7 @@ export default function ActivityHeatmap({ activityMap = {}, onDayPress }) {
       for (let d = 0; d < 7; d++) {
         const day = new Date(colStart);
         day.setDate(colStart.getDate() + d);
-        const key = day.toISOString().slice(0, 10);
+        const key = toLocalISODate(day);
         const a = activityMap[key];
         const level = a?.level || 0;
         const isFuture = day > now;

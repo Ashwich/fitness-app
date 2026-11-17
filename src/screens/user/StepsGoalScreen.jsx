@@ -26,6 +26,7 @@ import {
   upsertPreferences,
 } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
 const StepsGoalScreen = ({ navigation }) => {
   const [stepsGoal, setStepsGoalState] = useState('10000');
@@ -108,11 +109,11 @@ const StepsGoalScreen = ({ navigation }) => {
       {/* Modern Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backAction}>
-          <Ionicons name="chevron-back" size={28} color="#111827" />
+          <Ionicons name="chevron-back" size={28} color={colors.label} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Activity</Text>
         <TouchableOpacity style={styles.infoButton}>
-          <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+          <Ionicons name="information-circle-outline" size={24} color={colors.label2} />
         </TouchableOpacity>
       </View>
 
@@ -120,7 +121,7 @@ const StepsGoalScreen = ({ navigation }) => {
         
         {healthHint ? (
           <View style={styles.hintBanner}>
-            <Ionicons name="information-circle-outline" size={18} color="#7c3aed" />
+            <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
             <Text style={styles.hintText}>{healthHint}</Text>
           </View>
         ) : null}
@@ -131,7 +132,7 @@ const StepsGoalScreen = ({ navigation }) => {
              {/* Visual representation of a ring progress */}
             <View style={styles.outerRing}>
                 <View style={styles.innerRing}>
-                    <Ionicons name="footsteps" size={32} color="#10b981" />
+                    <Ionicons name="footsteps" size={32} color={colors.accent} />
                     <Text style={styles.mainStepsValue}>{todaySteps.toLocaleString()}</Text>
                     <Text style={styles.mainStepsLabel}>Steps Today</Text>
                 </View>
@@ -151,15 +152,15 @@ const StepsGoalScreen = ({ navigation }) => {
 
         {/* Weekly Stats Summary Tiles */}
         <View style={styles.statsRow}>
-            <View style={[styles.statTile, { backgroundColor: '#ECFDF5' }]}>
+            <View style={[styles.statTile, { backgroundColor: colors.accentSoft }]}>
                 <Text style={styles.statLabel}>Weekly Total</Text>
-                <Text style={[styles.statValue, { color: '#065F46' }]}>
+                <Text style={[styles.statValue, { color: colors.accent }]}>
                     {getTotalWeeklySteps().toLocaleString()}
                 </Text>
             </View>
-            <View style={[styles.statTile, { backgroundColor: '#F0FDFA' }]}>
+            <View style={[styles.statTile, { backgroundColor: colors.accentSoft }]}>
                 <Text style={styles.statLabel}>Avg. Daily</Text>
-                <Text style={[styles.statValue, { color: '#0F766E' }]}>
+                <Text style={[styles.statValue, { color: colors.accent }]}>
                     {Math.round(getTotalWeeklySteps() / 7).toLocaleString()}
                 </Text>
             </View>
@@ -178,7 +179,7 @@ const StepsGoalScreen = ({ navigation }) => {
                             <View style={styles.barBackground}>
                                 <View style={[
                                     styles.barFill, 
-                                    { height: `${height}%`, backgroundColor: isGoalMet ? '#10b981' : '#34d399' }
+                                    { height: `${height}%`, backgroundColor: isGoalMet ? colors.accent : colors.accent }
                                 ]} />
                             </View>
                             <Text style={styles.barDay}>{getDayName(date)}</Text>
@@ -232,21 +233,21 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 24,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: colors.label },
   backAction: { width: 40 },
   infoButton: { width: 40, alignItems: 'flex-end' },
   
-  content: { flex: 1, backgroundColor: '#F8FAFC' },
+  content: { flex: 1, backgroundColor: colors.bg },
   
   mainCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     margin: 20,
     borderRadius: 32,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05,
     shadowRadius: 20,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     borderWidth: 12,
-    borderColor: '#F1F5F9', // Background of the ring
+    borderColor: colors.sep, // Background of the ring
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -274,13 +275,13 @@ const styles = StyleSheet.create({
   mainStepsValue: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#111827',
+    color: colors.label,
     marginTop: 8,
   },
   mainStepsLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.label2,
   },
   
   progressBarContainer: { width: '100%' },
@@ -289,17 +290,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  percentageText: { fontSize: 14, fontWeight: '700', color: '#10b981' },
-  goalTarget: { fontSize: 14, color: '#94A3B8', fontWeight: '500' },
+  percentageText: { fontSize: 14, fontWeight: '700', color: colors.accent },
+  goalTarget: { fontSize: 14, color: colors.label3, fontWeight: '500' },
   track: {
     height: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surface2,
     borderRadius: 5,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    backgroundColor: '#10b981',
+    backgroundColor: colors.accent,
     borderRadius: 5,
   },
 
@@ -315,17 +316,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
   },
-  statLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 4, textTransform: 'uppercase' },
+  statLabel: { fontSize: 12, fontWeight: '700', color: colors.label2, marginBottom: 4, textTransform: 'uppercase' },
   statValue: { fontSize: 20, fontWeight: '800' },
 
   historyCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     borderRadius: 24,
     padding: 24,
     marginBottom: 20,
   },
-  historyTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  historyTitle: { fontSize: 18, fontWeight: '800', color: colors.label, marginBottom: 20 },
   chartArea: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -336,13 +337,13 @@ const styles = StyleSheet.create({
   barBackground: {
     width: 8,
     height: 80,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surface2,
     borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   barFill: { width: '100%', borderRadius: 4 },
-  barDay: { marginTop: 12, fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+  barDay: { marginTop: 12, fontSize: 12, fontWeight: '700', color: colors.label3 },
 
   goalSection: {
     paddingHorizontal: 20,
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
   goalFieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.label2,
     marginBottom: 6,
   },
   inputContainer: {
@@ -376,11 +377,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#f5f3ff',
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: colors.accentLine,
   },
-  hintText: { flex: 1, fontSize: 12, lineHeight: 18, color: '#6b21a8' },
+  hintText: { flex: 1, fontSize: 12, lineHeight: 18, color: colors.label2 },
 });
 
 export default StepsGoalScreen;

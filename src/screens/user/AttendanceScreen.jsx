@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { scanQrCode } from '../../api/services/attendanceService';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
 const { width, height } = Dimensions.get('window');
 
@@ -111,7 +112,7 @@ const AttendanceScreen = ({ navigation }) => {
     <ScreenContainer>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color={colors.label} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mark Attendance</Text>
         <View style={styles.placeholder} />
@@ -119,7 +120,7 @@ const AttendanceScreen = ({ navigation }) => {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.infoCard}>
-          <Ionicons name="qr-code-outline" size={48} color="#2563eb" />
+          <Ionicons name="qr-code-outline" size={48} color={colors.accent} />
           <Text style={styles.infoTitle}>Scan QR Code</Text>
           <Text style={styles.infoText}>
             Use your camera to scan the QR code at the gym, or enter it manually
@@ -131,7 +132,7 @@ const AttendanceScreen = ({ navigation }) => {
           onPress={openCamera}
           disabled={scanning}
         >
-          <Ionicons name="camera" size={24} color="#ffffff" />
+          <Ionicons name="camera" size={24} color={colors.onAccent} />
           <Text style={styles.cameraButtonText}>Scan with Camera</Text>
         </TouchableOpacity>
 
@@ -160,10 +161,10 @@ const AttendanceScreen = ({ navigation }) => {
           disabled={scanning}
         >
           {scanning ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+              <Ionicons name="checkmark-circle" size={20} color={colors.onAccent} />
               <Text style={styles.scanButtonText}>Mark Attendance</Text>
             </>
           )}
@@ -179,7 +180,7 @@ const AttendanceScreen = ({ navigation }) => {
         )}
 
         <View style={styles.helpCard}>
-          <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+          <Ionicons name="information-circle-outline" size={24} color={colors.label2} />
           <Text style={styles.helpText}>
             Point your camera at the QR code displayed at the gym to automatically mark your attendance
           </Text>
@@ -210,7 +211,7 @@ const AttendanceScreen = ({ navigation }) => {
                     setScanned(false);
                   }}
                 >
-                  <Ionicons name="close" size={28} color="#ffffff" />
+                  <Ionicons name="close" size={28} color={colors.label} />
                 </TouchableOpacity>
                 <Text style={styles.cameraTitle}>Scan QR Code</Text>
                 <View style={styles.placeholder} />
@@ -243,9 +244,9 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.bg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.sep,
   },
   backButton: {
     width: 40,
@@ -256,25 +257,25 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   contentContainer: {
     padding: 20,
   },
   infoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
-    shadowColor: '#000',
+    shadowColor: colors.onAccent,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -283,17 +284,17 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginTop: 16,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
     textAlign: 'center',
   },
   cameraButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.accent,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cameraButtonText: {
-    color: '#ffffff',
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -315,12 +316,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.surface3,
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#9ca3af',
+    color: colors.label3,
     fontWeight: '600',
   },
   inputContainer: {
@@ -329,19 +330,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.sep,
   },
   scanButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.accent,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -354,32 +355,32 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   scanButtonText: {
-    color: '#ffffff',
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '600',
   },
   resultCard: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colors.accentSoft,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#86efac',
+    borderColor: colors.accent,
   },
   resultTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#166534',
+    color: colors.accent,
     marginBottom: 8,
   },
   resultText: {
     fontSize: 14,
-    color: '#15803d',
+    color: colors.accent,
   },
   helpCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -387,20 +388,20 @@ const styles = StyleSheet.create({
   helpText: {
     flex: 1,
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
     lineHeight: 20,
   },
   // Camera Modal Styles
   cameraContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.bg,
   },
   camera: {
     flex: 1,
   },
   cameraOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
   },
   cameraHeader: {
     flexDirection: 'row',
@@ -415,13 +416,13 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     borderRadius: 20,
   },
   cameraTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.label,
   },
   scanArea: {
     flex: 1,
@@ -438,7 +439,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 30,
     height: 30,
-    borderColor: '#2563eb',
+    borderColor: colors.accent,
     borderWidth: 3,
   },
   topLeft: {
@@ -468,9 +469,9 @@ const styles = StyleSheet.create({
   scanHint: {
     marginTop: 24,
     fontSize: 14,
-    color: '#ffffff',
+    color: colors.label,
     textAlign: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

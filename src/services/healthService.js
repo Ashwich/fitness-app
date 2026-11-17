@@ -2,6 +2,7 @@ import { Accelerometer, Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { toLocalISODate } from '../utils/date';
 
 const STEPS_KEY = 'fitsera_steps_data';
 const CALORIES_KEY = 'fitsera_calories_data';
@@ -98,7 +99,7 @@ export const startStepTracking = async () => {
 
   try {
     // Load existing step count for today
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const storedData = await AsyncStorage.getItem(STEPS_KEY);
     const stepsData = storedData ? JSON.parse(storedData) : {};
     stepCount = stepsData[today] || 0;
@@ -165,7 +166,7 @@ export const stopStepTracking = () => {
 
 const saveStepsForToday = async (steps) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const storedData = await AsyncStorage.getItem(STEPS_KEY);
     const stepsData = storedData ? JSON.parse(storedData) : {};
     stepsData[today] = steps;
@@ -355,7 +356,7 @@ export const getTodaySteps = async () => {
       const healthKitSteps = await getStepsFromHealthKit();
       if (healthKitSteps !== null && healthKitSteps !== undefined) {
         // Save to local storage for backup
-        const today = new Date().toISOString().split('T')[0];
+        const today = toLocalISODate();
         await saveStepsForToday(healthKitSteps);
         return healthKitSteps;
       }
@@ -370,7 +371,7 @@ export const getTodaySteps = async () => {
     }
 
     // Final fallback to local storage / in-memory tracker (Android + Expo Go)
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const storedData = await AsyncStorage.getItem(STEPS_KEY);
     const stepsData = storedData ? JSON.parse(storedData) : {};
     return stepsData[today] || stepCount || 0;
@@ -390,7 +391,7 @@ export const getWeeklySteps = async () => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalISODate(date);
       weeklyData[dateKey] = stepsData[dateKey] || 0;
     }
     

@@ -1,103 +1,115 @@
-import React from 'react';
-import { StyleSheet, Text, View, Image, Dimensions } from 'react-native';
-import { ScreenContainer } from '../../components/ScreenContainer';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { colors, radii } from '../../theme/opengym';
 
-const { width } = Dimensions.get('window');
+const FEATURES = [
+  { icon: 'restaurant-outline', label: 'Log meals & calories', tint: colors.orange },
+  { icon: 'footsteps-outline', label: 'Steps & water, every day', tint: colors.blue },
+  { icon: 'barbell-outline', label: 'Workout plans & exercises', tint: colors.accent },
+  { icon: 'qr-code-outline', label: 'Gym attendance & trainer diets', tint: colors.purple },
+];
 
 const HomepageScreen = ({ navigation }) => (
-  <ScreenContainer style={styles.container}>
-    
-    {/* 1. Top Section: Image & Branding */}
-    <View style={styles.heroSection}>
-      {/* Placeholder for your logo or fitness illustration */}
-      <Image 
-        source={{ uri: 'https://img.freepik.com/free-vector/fitness-tracker-concept-illustration_114360-4668.jpg' }} 
-        style={styles.heroImage}
-        resizeMode="contain"
-      />
-      
-      <View style={styles.textContainer}>
-        <Text style={styles.brandTag}>FITSERA APP</Text>
-        <Text style={styles.title}>Transform Your Body,{' '}<Text style={styles.highlight}>Transform Your Life</Text></Text>
-        <Text style={styles.subtitle}>
-          Your personal fitness companion. Track workouts, manage goals, and crush your limits.
-        </Text>
+  <SafeAreaView style={styles.safe}>
+    <LinearGradient
+      colors={[colors.accentSoft, colors.bg]}
+      style={StyleSheet.absoluteFill}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 0.55 }}
+    />
+    <View style={styles.hero}>
+      <View style={styles.logo}>
+        <Ionicons name="pulse" size={44} color={colors.onAccent} />
       </View>
-    </View>
-
-    {/* 2. Bottom Section: Actions */}
-    <View style={styles.actionSection}>
-      <PrimaryButton
-        title="Get started"
-        onPress={() => navigation.navigate('Login')}
-      />
-      <Text style={styles.hint}>
-        Sign in with phone or Google. Link your gym phone anytime to sync membership.
+      <Text style={styles.brandTag}>FITSERA</Text>
+      <Text style={styles.title}>
+        Train smarter.{'\n'}
+        <Text style={styles.highlight}>Live stronger.</Text>
+      </Text>
+      <Text style={styles.subtitle}>
+        Your fitness companion, connected to your gym.
       </Text>
     </View>
 
-  </ScreenContainer>
+    <View style={styles.features}>
+      {FEATURES.map((f) => (
+        <View key={f.label} style={styles.featureRow}>
+          <View style={[styles.featureIcon, { backgroundColor: `${f.tint}26` }]}>
+            <Ionicons name={f.icon} size={18} color={f.tint} />
+          </View>
+          <Text style={styles.featureText}>{f.label}</Text>
+        </View>
+      ))}
+    </View>
+
+    <View style={styles.actions}>
+      <PrimaryButton title="Get started" onPress={() => navigation.navigate('Login')} />
+      <Text style={styles.hint}>Sign in with your phone number or Google.</Text>
+    </View>
+  </SafeAreaView>
 );
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff', // Clean white background
-    justifyContent: 'space-between',
-  },
-  heroSection: {
+  safe: { flex: 1, backgroundColor: colors.bg },
+  hero: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 20,
-  },
-  heroImage: {
-    width: width * 0.8,
-    height: width * 0.7, // Keep aspect ratio square-ish
-    marginBottom: 30,
-  },
-  textContainer: {
     paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  logo: {
+    width: 84,
+    height: 84,
+    borderRadius: radii.xl,
+    backgroundColor: colors.accent,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   brandTag: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    color: '#6366F1', // Indigo/Brand Color
+    letterSpacing: 3,
+    color: colors.accent,
     marginBottom: 12,
-    textTransform: 'uppercase',
   },
   title: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.label,
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 40,
+    lineHeight: 42,
+    letterSpacing: -0.6,
   },
-  highlight: {
-    color: '#6366F1', // Highlight color matches brand tag
-  },
+  highlight: { color: colors.accent },
   subtitle: {
-    color: '#6b7280',
+    marginTop: 12,
+    color: colors.label2,
     fontSize: 16,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 10,
+    lineHeight: 22,
   },
-  actionSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 48,
-    gap: 12,
+  features: {
+    marginHorizontal: 24,
+    padding: 16,
+    gap: 14,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
   },
-  hint: {
-    fontSize: 13,
-    color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 18,
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  featureIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  featureText: { color: colors.label, fontSize: 15, fontWeight: '500' },
+  actions: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32, gap: 12 },
+  hint: { fontSize: 13, color: colors.label3, textAlign: 'center' },
 });
 
 export default HomepageScreen;

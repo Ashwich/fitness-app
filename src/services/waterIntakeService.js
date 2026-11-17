@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isRunningInExpoGo } from 'expo';
+import { toLocalISODate } from '../utils/date';
 
 const WATER_GOAL_KEY = 'fitsera_water_goal';
 const WATER_DATA_KEY = 'fitsera_water_data';
@@ -61,7 +62,7 @@ export const setWaterGoal = async (goalInLiters) => {
 
 export const addWaterIntake = async (amountInLiters) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const storedData = await AsyncStorage.getItem(WATER_DATA_KEY);
     const waterData = storedData ? JSON.parse(storedData) : {};
 
@@ -81,7 +82,7 @@ export const addWaterIntake = async (amountInLiters) => {
 
 export const getTodayWaterIntake = async () => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalISODate();
     const storedData = await AsyncStorage.getItem(WATER_DATA_KEY);
     const waterData = storedData ? JSON.parse(storedData) : {};
     return waterData[today] || 0;
@@ -101,7 +102,7 @@ export const getWeeklyWaterIntake = async () => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = toLocalISODate(date);
       weeklyData[dateKey] = waterData[dateKey] || 0;
     }
 

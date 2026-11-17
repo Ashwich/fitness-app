@@ -11,8 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { getReadableError } from '../../utils/apiError';
+import { colors } from '../../theme/opengym';
 
-const PURPLE = '#9333ea';
+const PURPLE = colors.accent;
 
 /**
  * Shown after login when the member is not yet linked to a gym.
@@ -68,10 +69,10 @@ const WaitingForGymScreen = ({ navigation }) => {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Ionicons name="refresh" size={18} color="#fff" />
+              <Ionicons name="refresh" size={18} color={colors.onAccent} />
               <Text style={styles.primaryText}>Retry link</Text>
             </>
           )}
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#f3e8ff',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -109,13 +110,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.label,
     textAlign: 'center',
   },
   body: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#6b7280',
+    color: colors.label2,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -130,13 +131,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     width: '100%',
   },
-  primaryText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 16 },
   secondaryBtn: {
     paddingVertical: 12,
   },
   secondaryText: { color: PURPLE, fontWeight: '600', fontSize: 15 },
   logoutBtn: { marginTop: 24 },
-  logoutText: { color: '#9ca3af', fontWeight: '500' },
+  logoutText: { color: colors.label3, fontWeight: '500' },
   disabled: { opacity: 0.7 },
 });
 

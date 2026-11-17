@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toLocalISODate } from '../utils/date';
 
 const KEY = 'fitsera_period_tracking';
 
@@ -34,7 +35,7 @@ export function predictNextPeriod(settings) {
   if (Number.isNaN(start.getTime())) return null;
   const next = new Date(start);
   next.setDate(next.getDate() + Number(settings.cycleLengthDays));
-  return next.toISOString().split('T')[0];
+  return toLocalISODate(next);
 }
 
 /** Day in current cycle (1-based), or null */

@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ExerciseMedia, { MediaAttribution } from './ExerciseMedia';
+import { colors } from '../../theme/opengym';
 
-const PURPLE = '#30d158';
+const PURPLE = colors.accent;
 
 export default function ExerciseDetailModal({ visible, exercise, onClose }) {
   if (!exercise) return null;
@@ -27,7 +28,7 @@ export default function ExerciseDetailModal({ visible, exercise, onClose }) {
             {title}
           </Text>
           <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color="#ffffff" />
+            <Ionicons name="close" size={24} color={colors.label} />
           </TouchableOpacity>
         </View>
 
@@ -81,50 +82,50 @@ export default function ExerciseDetailModal({ visible, exercise, onClose }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#1c1c1e' },
+  safe: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: colors.sep,
     gap: 12,
   },
-  title: { flex: 1, fontSize: 18, fontWeight: '800', color: '#ffffff', textTransform: 'capitalize' },
+  title: { flex: 1, fontSize: 18, fontWeight: '800', color: colors.label, textTransform: 'capitalize' },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: { padding: 20, gap: 12, paddingBottom: 40 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    backgroundColor: '#2c2c2e',
+    backgroundColor: colors.surface2,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
   },
-  chipText: { fontSize: 12, fontWeight: '600', color: '#30d158', textTransform: 'capitalize' },
+  chipText: { fontSize: 12, fontWeight: '600', color: colors.accent, textTransform: 'capitalize' },
   prescription: { fontSize: 15, fontWeight: '700', color: PURPLE },
   steps: { gap: 10, marginTop: 8 },
-  stepsTitle: { fontSize: 16, fontWeight: '800', color: '#ffffff', marginBottom: 4 },
+  stepsTitle: { fontSize: 16, fontWeight: '800', color: colors.label, marginBottom: 4 },
   stepRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   stepNum: {
     width: 24,
     height: 24,
     borderRadius: 12,
     backgroundColor: PURPLE,
-    color: '#fff',
+    color: colors.label,
     textAlign: 'center',
     lineHeight: 24,
     fontSize: 12,
     fontWeight: '700',
     overflow: 'hidden',
   },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 20, color: 'rgba(235,235,245,0.6)' },
-  noSteps: { fontSize: 14, color: 'rgba(235,235,245,0.32)' },
+  stepText: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.label2 },
+  noSteps: { fontSize: 14, color: colors.label3 },
 });

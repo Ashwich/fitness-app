@@ -30,6 +30,7 @@ import {
 import { getReadableError } from '../../utils/apiError';
 import { colors, radii, space } from '../../theme/opengym';
 import CalorieRing from '../../components/nutrition/CalorieRing';
+import { toLocalISODate } from '../../utils/date';
 
 const MEAL_TYPES = {
   breakfast: { label: 'Breakfast', icon: 'sunny-outline', color: colors.orange },
@@ -57,7 +58,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
   // Initialize selectedDate to today's date
   const getTodayDate = () => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return toLocalISODate(today);
   };
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
 
@@ -159,7 +160,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
       // Load diary entry for selected date
       // Use today's date if selectedDate is not set or is invalid
-      const dateToFetch = selectedDate || new Date().toISOString().split('T')[0];
+      const dateToFetch = selectedDate || toLocalISODate();
       console.log('[NutritionDiary] Fetching diary entry for date:', dateToFetch);
       
       // getDiaryEntry handles 404s internally and returns null, so no try-catch needed here

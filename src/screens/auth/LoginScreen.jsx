@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import FirebaseAuthButtons from '../../components/auth/FirebaseAuthButtons';
+import { colors } from '../../theme/opengym';
 
 const LoginScreen = () => {
   return (
@@ -29,10 +30,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
   },
   subtitle: {
-    color: '#6b7280',
+    color: colors.label2,
     fontSize: 15,
     lineHeight: 22,
   },
