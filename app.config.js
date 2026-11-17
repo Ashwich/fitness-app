@@ -11,11 +11,6 @@ export default {
     icon: './assets/icon.png',
     userInterfaceStyle: 'dark',
     newArchEnabled: true,
-    splash: {
-      image: './assets/splash-icon.png',
-      resizeMode: 'contain',
-      backgroundColor: '#000000',
-    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fitsera.app',
@@ -44,7 +39,7 @@ export default {
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#000000',
+        backgroundColor: '#F3EFE6',
       },
     },
     web: {
@@ -57,6 +52,14 @@ export default {
         '@react-native-google-signin/google-signin',
         {
           iosUrlScheme: GOOGLE_IOS_URL_SCHEME,
+        },
+      ],
+      [
+        'expo-splash-screen',
+        {
+          // Plain cream launch screen; the animated logo intro plays right after
+          // on the same background (see src/components/IntroSplash.jsx).
+          backgroundColor: '#F3EFE6',
         },
       ],
       'expo-secure-store',
