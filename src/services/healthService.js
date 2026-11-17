@@ -14,7 +14,25 @@ let isHealthKitAvailable = false;
 let isHealthKitInitialized = false;
 
 // Check if we're in Expo Go (which doesn't support native modules)
-const isExpoGo = Constants.executionEnvironment === 'storeClient';
+const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+
+export const HEALTH_NATIVE_UNAVAILABLE_MESSAGE =
+  'Apple Health / Google Fit need a development build (not Expo Go). Using on-device step sensors when available.';
+
+/** Clear user-facing status when native health APIs are unavailable. */
+export function getHealthAvailabilityMessage() {
+  if (isExpoGo) {
+    return HEALTH_NATIVE_UNAVAILABLE_MESSAGE;
+  }
+  if (!isHealthKitAvailable) {
+    return 'Native Health / Google Fit module is unavailable on this build. Using device sensors for steps.';
+  }
+  return '';
+}
+
+export function isNativeHealthAvailable() {
+  return isHealthKitAvailable && !isExpoGo;
+}
 
 try {
   if (isExpoGo) {
@@ -48,12 +66,32 @@ try {
 let accelerometerSubscription = null;
 let pedometerSubscription = null;
 let stepCount = 0;
+let pedometerBaseline = 0;
 let lastStepTime = Date.now();
 let isTracking = false;
 
 // Step detection threshold
 const STEP_THRESHOLD = 0.3;
 let lastAcceleration = { x: 0, y: 0, z: 0 };
+
+/**
+ * Historical step queries via Pedometer.getStepCountAsync are iOS-only.
+ * Android throws: "Getting step count for date range is not supported".
+ */
+const getIosPedometerStepsToday = async () => {
+  if (Platform.OS !== 'ios') return null;
+  try {
+    const available = await Pedometer.isAvailableAsync();
+    if (!available) return null;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const result = await Pedometer.getStepCountAsync(startOfDay, new Date());
+    return typeof result?.steps === 'number' ? result.steps : null;
+  } catch (error) {
+    console.log('[HealthService] iOS pedometer historical fetch failed:', error?.message || error);
+    return null;
+  }
+};
 
 export const startStepTracking = async () => {
   if (isTracking) return;
@@ -68,23 +106,17 @@ export const startStepTracking = async () => {
     // Prefer built-in pedometer sensor for fallback (device-native step source)
     const pedometerAvailable = await Pedometer.isAvailableAsync();
     if (pedometerAvailable) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const now = new Date();
-      try {
-        const result = await Pedometer.getStepCountAsync(startOfDay, now);
-        if (typeof result?.steps === 'number') {
-          stepCount = Math.max(stepCount, result.steps);
-          await saveStepsForToday(stepCount);
-        }
-      } catch (error) {
-        console.log('[HealthService] Pedometer initial fetch failed, continuing with watcher');
+      // iOS can seed from midnight; Android only supports live watchStepCount.
+      const iosSteps = await getIosPedometerStepsToday();
+      if (iosSteps != null) {
+        stepCount = Math.max(stepCount, iosSteps);
+        await saveStepsForToday(stepCount);
       }
 
+      pedometerBaseline = stepCount;
       pedometerSubscription = Pedometer.watchStepCount(({ steps }) => {
-        // `steps` is cumulative since subscription start; merge with stored baseline.
-        const mergedSteps = Math.max(stepCount, stepsData[today] || 0, steps || 0);
-        stepCount = mergedSteps;
+        // `steps` is cumulative since subscription start — add to today's baseline.
+        stepCount = pedometerBaseline + (steps || 0);
         saveStepsForToday(stepCount);
       });
 
@@ -150,7 +182,7 @@ export const initializeHealthKit = async () => {
   console.log('[HealthService] Platform.OS:', Platform.OS);
   
   if (!isHealthKitAvailable) {
-    console.log('[HealthService] HealthKit/Google Fit not available - requires native build (not Expo Go)');
+    console.log('[HealthService]', getHealthAvailabilityMessage() || 'HealthKit/Google Fit not available');
     console.log('[HealthService] Falling back to accelerometer-based step tracking');
     return false;
   }
@@ -329,21 +361,15 @@ export const getTodaySteps = async () => {
       }
     }
 
-    // Fallback to local storage; if available, refresh from built-in pedometer first
-    const pedometerAvailable = await Pedometer.isAvailableAsync();
-    if (pedometerAvailable) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const now = new Date();
-      const pedometerResult = await Pedometer.getStepCountAsync(startOfDay, now);
-      if (typeof pedometerResult?.steps === 'number') {
-        await saveStepsForToday(pedometerResult.steps);
-        stepCount = pedometerResult.steps;
-        return pedometerResult.steps;
-      }
+    // iOS: refresh from system pedometer history. Android: use live tracker + storage.
+    const iosSteps = await getIosPedometerStepsToday();
+    if (iosSteps != null) {
+      await saveStepsForToday(iosSteps);
+      stepCount = iosSteps;
+      return iosSteps;
     }
 
-    // Final fallback to local storage/accelerometer cache
+    // Final fallback to local storage / in-memory tracker (Android + Expo Go)
     const today = new Date().toISOString().split('T')[0];
     const storedData = await AsyncStorage.getItem(STEPS_KEY);
     const stepsData = storedData ? JSON.parse(storedData) : {};
@@ -390,6 +416,26 @@ export const getStepsGoal = async () => {
   } catch (error) {
     console.error('Error getting steps goal:', error);
     return 10000;
+  }
+};
+
+const CALORIE_BURN_GOAL_KEY = 'fitsera_calorie_burn_goal';
+
+export const setCalorieBurnGoal = async (goal) => {
+  try {
+    await AsyncStorage.setItem(CALORIE_BURN_GOAL_KEY, String(goal));
+  } catch (error) {
+    console.error('Error setting calorie burn goal:', error);
+  }
+};
+
+export const getCalorieBurnGoal = async () => {
+  try {
+    const goal = await AsyncStorage.getItem(CALORIE_BURN_GOAL_KEY);
+    return goal ? parseInt(goal, 10) : 400;
+  } catch (error) {
+    console.error('Error getting calorie burn goal:', error);
+    return 400;
   }
 };
 

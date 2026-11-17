@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Image, Dimensions } from 'react-native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { PrimaryButton } from '../../components/PrimaryButton';
 
@@ -29,17 +29,12 @@ const HomepageScreen = ({ navigation }) => (
     {/* 2. Bottom Section: Actions */}
     <View style={styles.actionSection}>
       <PrimaryButton
-        title="Get Started"
-        onPress={() => navigation.navigate('Register')}
-        // Assuming your component accepts container styles, add visual weight here
+        title="Get started"
+        onPress={() => navigation.navigate('Login')}
       />
-
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginText}>Already have an account?</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.loginLink}>Log In</Text>
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.hint}>
+        Sign in with phone or Google. Link your gym phone anytime to sync membership.
+      </Text>
     </View>
 
   </ScreenContainer>
@@ -94,24 +89,14 @@ const styles = StyleSheet.create({
   },
   actionSection: {
     paddingHorizontal: 24,
-    paddingBottom: 48, // Space from bottom of screen
-    gap: 20,
+    paddingBottom: 48,
+    gap: 12,
   },
-  // New "Login" style to differentiate from "Register"
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-  },
-  loginText: {
-    fontSize: 15,
+  hint: {
+    fontSize: 13,
     color: '#6b7280',
-  },
-  loginLink: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#6366F1', // Brand color
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

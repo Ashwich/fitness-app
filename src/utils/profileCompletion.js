@@ -37,61 +37,56 @@ export const calculateProfileCompletion = (profile) => {
   fields.forEach((field) => {
     let value = profile[field.key];
     let isCompleted = false;
-    
-    // Handle JSON string values (from database)
+
     if (value && typeof value === 'string') {
       try {
         value = JSON.parse(value);
       } catch (e) {
-        // Not JSON, keep as is
+        // keep as string
       }
     }
-    
+
     if (field.nested) {
-      // Check nested field (e.g., fitnessGoals.primaryGoal, calorieGoals.dailyCalories)
       if (value && typeof value === 'object') {
         const nestedValue = value[field.nested];
-        // Check if nested value is not null, undefined, or empty string
-        // For dailyCalories, 0 is not valid, but for other fields it might be
         if (field.nested === 'dailyCalories') {
-          isCompleted = nestedValue !== null && nestedValue !== undefined && nestedValue !== '' && !isNaN(nestedValue) && nestedValue > 0;
+          isCompleted =
+            nestedValue !== null &&
+            nestedValue !== undefined &&
+            nestedValue !== '' &&
+            !isNaN(nestedValue) &&
+            nestedValue > 0;
         } else {
-          isCompleted = nestedValue !== null && nestedValue !== undefined && nestedValue !== '';
+          isCompleted =
+            nestedValue !== null && nestedValue !== undefined && nestedValue !== '';
         }
       }
+    } else if (field.key === 'weightKg' || field.key === 'heightCm') {
+      isCompleted =
+        value !== null &&
+        value !== undefined &&
+        value !== '' &&
+        !isNaN(value) &&
+        value > 0;
     } else {
-      // Check direct field
-      // For numeric fields, 0 is not a valid value
-      if (field.key === 'weightKg' || field.key === 'heightCm') {
-        isCompleted = value !== null && value !== undefined && value !== '' && !isNaN(value) && value > 0;
-      } else {
-        isCompleted = value !== null && value !== undefined && value !== '';
-      }
+      isCompleted = value !== null && value !== undefined && value !== '';
     }
-    
+
     if (isCompleted) {
       completedFields.push(field);
     } else {
       missingCategories.add(field.category);
-      console.log(`[ProfileCompletion] Missing field: ${field.key} (category: ${field.category})`);
-      if (field.nested) {
-        console.log(`[ProfileCompletion]   Value:`, value, `Nested key: ${field.nested}`, `Nested value:`, value?.[field.nested]);
-      } else {
-        console.log(`[ProfileCompletion]   Value:`, value);
-      }
     }
   });
 
   const total = fields.length;
   const completed = completedFields.length;
   const percentage = Math.round((completed / total) * 100);
-  const missing = Array.from(missingCategories);
 
   return {
     percentage,
     completed,
     total,
-    missing,
+    missing: Array.from(missingCategories),
   };
 };
-

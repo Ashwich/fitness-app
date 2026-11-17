@@ -169,3 +169,21 @@ export const me = async () => {
   return extractData(response);
 };
 
+/** Exchange Firebase ID token for users-service JWT */
+export const firebaseAuth = async (idToken) => {
+  const response = await apiClient.post('/auth/firebase', { idToken });
+  return extractData(response);
+};
+
+/** Expo Go: login with phone only (no OTP). Requires users-service ALLOW_DEV_PHONE_LOGIN. */
+export const devPhoneAuth = async (phone) => {
+  const response = await apiClient.post('/auth/dev-phone', { phone });
+  return extractData(response);
+};
+
+/** After Google/email auth: attach phone for gym roster sync */
+export const linkPhone = async (phone) => {
+  const response = await apiClient.post('/me/phone', { phone });
+  return extractData(response);
+};
+

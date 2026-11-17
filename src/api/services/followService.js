@@ -63,42 +63,49 @@ const createApiClient = (basePath) => {
 
 const followsClient = createApiClient('/api/follows');
 
+const assertUserId = (userId) => {
+  if (userId == null || userId === '' || userId === 'undefined' || userId === 'null') {
+    throw new Error('Missing user id for follows request');
+  }
+  return userId;
+};
+
 export const followUser = async (userId) => {
-  const response = await followsClient.post(`/${userId}`);
+  const response = await followsClient.post(`/${assertUserId(userId)}`);
   return extractData(response);
 };
 
 export const unfollowUser = async (userId) => {
-  const response = await followsClient.delete(`/${userId}`);
+  const response = await followsClient.delete(`/${assertUserId(userId)}`);
   return extractData(response);
 };
 
 export const toggleFollow = async (userId) => {
-  const response = await followsClient.post(`/${userId}`);
+  const response = await followsClient.post(`/${assertUserId(userId)}`);
   return extractData(response);
 };
 
 export const getFollowers = async (userId, limit = 50, offset = 0) => {
-  const response = await followsClient.get(`/${userId}/followers`, {
+  const response = await followsClient.get(`/${assertUserId(userId)}/followers`, {
     params: { limit, offset },
   });
   return extractData(response);
 };
 
 export const getFollowing = async (userId, limit = 50, offset = 0) => {
-  const response = await followsClient.get(`/${userId}/following`, {
+  const response = await followsClient.get(`/${assertUserId(userId)}/following`, {
     params: { limit, offset },
   });
   return extractData(response);
 };
 
 export const getFollowStats = async (userId) => {
-  const response = await followsClient.get(`/${userId}/stats`);
+  const response = await followsClient.get(`/${assertUserId(userId)}/stats`);
   return extractData(response);
 };
 
 export const checkFollowStatus = async (userId) => {
-  const response = await followsClient.get(`/${userId}/status`);
+  const response = await followsClient.get(`/${assertUserId(userId)}/status`);
   return extractData(response);
 };
 

@@ -1,34 +1,61 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 
 const WATER_GOAL_KEY = 'fitsera_water_goal';
 const WATER_DATA_KEY = 'fitsera_water_data';
 const WATER_REMINDER_KEY = 'fitsera_water_reminders';
 
-// Configure notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// expo-notifications throws on Android Expo Go (remote push removed in SDK 53).
+// Only load it in development/production builds.
+const canUseNotifications = !isRunningInExpoGo();
+let Notifications = null;
+
+if (canUseNotifications) {
+  Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
+
+export const getWaterGoal = async () => {
+  try {
+    // Prefer server preference when available
+    try {
+      const { fetchPreferences } = require('../api/services/profileService');
+      const prefs = await fetchPreferences();
+      if (prefs?.waterGoalMl) {
+        const liters = prefs.waterGoalMl / 1000;
+        await AsyncStorage.setItem(WATER_GOAL_KEY, String(liters));
+        return liters;
+      }
+    } catch {
+      /* offline / unauthenticated */
+    }
+    const goal = await AsyncStorage.getItem(WATER_GOAL_KEY);
+    return goal ? parseFloat(goal) : 3.0;
+  } catch (error) {
+    console.error('Error getting water goal:', error);
+    return 3.0;
+  }
+};
 
 export const setWaterGoal = async (goalInLiters) => {
   try {
     await AsyncStorage.setItem(WATER_GOAL_KEY, goalInLiters.toString());
+    try {
+      const { upsertPreferences } = require('../api/services/profileService');
+      await upsertPreferences({ waterGoalMl: Math.round(Number(goalInLiters) * 1000) });
+    } catch {
+      /* ignore server sync failure */
+    }
   } catch (error) {
     console.error('Error setting water goal:', error);
-  }
-};
-
-export const getWaterGoal = async () => {
-  try {
-    const goal = await AsyncStorage.getItem(WATER_GOAL_KEY);
-    return goal ? parseFloat(goal) : 3.0; // Default 3 liters
-  } catch (error) {
-    console.error('Error getting water goal:', error);
-    return 3.0;
   }
 };
 
@@ -37,14 +64,14 @@ export const addWaterIntake = async (amountInLiters) => {
     const today = new Date().toISOString().split('T')[0];
     const storedData = await AsyncStorage.getItem(WATER_DATA_KEY);
     const waterData = storedData ? JSON.parse(storedData) : {};
-    
+
     if (!waterData[today]) {
       waterData[today] = 0;
     }
-    
+
     waterData[today] += amountInLiters;
     await AsyncStorage.setItem(WATER_DATA_KEY, JSON.stringify(waterData));
-    
+
     return waterData[today];
   } catch (error) {
     console.error('Error adding water intake:', error);
@@ -69,7 +96,7 @@ export const getWeeklyWaterIntake = async () => {
     const storedData = await AsyncStorage.getItem(WATER_DATA_KEY);
     const waterData = storedData ? JSON.parse(storedData) : {};
     const weeklyData = {};
-    
+
     // Get last 7 days
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
@@ -77,7 +104,7 @@ export const getWeeklyWaterIntake = async () => {
       const dateKey = date.toISOString().split('T')[0];
       weeklyData[dateKey] = waterData[dateKey] || 0;
     }
-    
+
     return weeklyData;
   } catch (error) {
     console.error('Error getting weekly water intake:', error);
@@ -87,37 +114,40 @@ export const getWeeklyWaterIntake = async () => {
 
 export const setupWaterReminders = async (enabled, intervalHours = 2) => {
   try {
+    if (!canUseNotifications || !Notifications) {
+      console.log(
+        '[WaterReminders] Skipped in Expo Go — use a development build for notifications'
+      );
+      await AsyncStorage.setItem(WATER_REMINDER_KEY, enabled ? 'true' : 'false');
+      return;
+    }
+
     if (!enabled) {
-      // Cancel all notifications
       await Notifications.cancelAllScheduledNotificationsAsync();
       await AsyncStorage.setItem(WATER_REMINDER_KEY, 'false');
       return;
     }
 
-    // Request permissions
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') {
       console.log('Notification permissions not granted');
       return;
     }
 
-    // Cancel existing notifications
     await Notifications.cancelAllScheduledNotificationsAsync();
 
-    // Schedule reminders every X hours (default 2 hours)
     const reminderTimes = [];
-    const startHour = 8; // Start at 8 AM
-    const endHour = 20; // End at 8 PM
-    
+    const startHour = 8;
+    const endHour = 20;
+
     for (let hour = startHour; hour <= endHour; hour += intervalHours) {
       reminderTimes.push(hour);
     }
 
-    // Schedule daily notifications
     for (const hour of reminderTimes) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '💧 Time to Drink Water!',
+          title: 'Time to Drink Water!',
           body: 'Stay hydrated! Remember to drink water.',
           sound: true,
         },
@@ -143,4 +173,3 @@ export const areRemindersEnabled = async () => {
     return false;
   }
 };
-

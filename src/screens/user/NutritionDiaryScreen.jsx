@@ -28,12 +28,14 @@ import {
   getDiaryStats,
 } from '../../api/services/diaryService';
 import { getReadableError } from '../../utils/apiError';
+import { colors, radii, space } from '../../theme/opengym';
+import CalorieRing from '../../components/nutrition/CalorieRing';
 
 const MEAL_TYPES = {
-  breakfast: { label: 'Breakfast', icon: 'sunny-outline', color: '#f59e0b' },
-  brunch: { label: 'Brunch', icon: 'cafe-outline', color: '#10b981' },
-  dinner: { label: 'Dinner', icon: 'moon-outline', color: '#6366f1' },
-  snacks: { label: 'Snacks', icon: 'fast-food-outline', color: '#ec4899' },
+  breakfast: { label: 'Breakfast', icon: 'sunny-outline', color: colors.orange },
+  brunch: { label: 'Brunch', icon: 'cafe-outline', color: colors.accent },
+  dinner: { label: 'Dinner', icon: 'moon-outline', color: colors.blue },
+  snacks: { label: 'Snacks', icon: 'nutrition-outline', color: '#bf5af2' },
 };
 
 const NutritionDiaryScreen = ({ navigation }) => {
@@ -663,13 +665,17 @@ const NutritionDiaryScreen = ({ navigation }) => {
   const renderMealSection = (mealType) => {
     const mealConfig = MEAL_TYPES[mealType];
     const mealItems = diaryEntry?.[mealType] || [];
-    const mealTotal = calculateMealTotal(mealItems);
 
     return (
       <View key={mealType} style={styles.mealSection}>
         <View style={styles.mealHeader}>
-          <Text style={styles.mealTitle}>{mealConfig.label}</Text>
-          <TouchableOpacity 
+          <View style={styles.mealTitleRow}>
+            <View style={[styles.mealIconWrap, { backgroundColor: `${mealConfig.color}22` }]}>
+              <Ionicons name={mealConfig.icon} size={16} color={mealConfig.color} />
+            </View>
+            <Text style={styles.mealTitle}>{mealConfig.label}</Text>
+          </View>
+          <TouchableOpacity
             style={styles.addMealButton}
             onPress={() => {
               setSelectedMeal(mealType);
@@ -678,7 +684,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
               setShowFoodModal(true);
             }}
           >
-            <Ionicons name="add" size={20} color="#10b981" />
+            <Ionicons name="add" size={16} color={colors.accent} />
             <Text style={styles.addMealButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -690,12 +696,12 @@ const NutritionDiaryScreen = ({ navigation }) => {
                 <View style={styles.foodItemHeader}>
                   <View style={styles.foodItemLeft}>
                     <View style={styles.foodIconPlaceholder}>
-                      <Ionicons name="restaurant-outline" size={24} color="#6b7280" />
+                      <Ionicons name="restaurant-outline" size={22} color={colors.label3} />
                     </View>
                     <View style={styles.foodItemInfo}>
                       <Text style={styles.foodItemName}>{item.foodName}</Text>
                       <Text style={styles.foodItemCalories}>
-                        {Math.round(item.calories)} kcal
+                        {Math.round(item.calories)} kcal · P {Math.round(item.protein || 0)}g
                       </Text>
                     </View>
                   </View>
@@ -703,130 +709,135 @@ const NutritionDiaryScreen = ({ navigation }) => {
                     onPress={() => handleRemoveFood(mealType, item.id || item.foodId)}
                     style={styles.removeButton}
                   >
-                    <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                    <Ionicons name="trash-outline" size={18} color={colors.red} />
                   </TouchableOpacity>
-                </View>
-                <View style={styles.foodItemDetails}>
-                  <Text style={styles.foodDetailText}>
-                    Calories: {Math.round(item.calories)} kcal
-                  </Text>
-                  <Text style={styles.foodDetailText}>
-                    Carbs: {Math.round(item.carbs || 0)} g
-                  </Text>
-                  <Text style={styles.foodDetailText}>
-                    Protein: {Math.round(item.protein || 0)} g
-                  </Text>
-                  <Text style={styles.foodDetailText}>
-                    Fats: {Math.round(item.fat || 0)} g
-                  </Text>
                 </View>
               </View>
             ))}
           </View>
         ) : (
           <View style={styles.emptyMeal}>
-            <Text style={styles.emptyMealText}>No items added yet</Text>
+            <Ionicons name="restaurant-outline" size={28} color={colors.label3} />
+            <Text style={styles.emptyMealText}>
+              No items added yet. Tap + Add to log your {mealConfig.label.toLowerCase()}.
+            </Text>
           </View>
         )}
       </View>
     );
   };
 
-  // Calculate macronutrient percentages based on goals (not total macros)
-  const carbsGoalPercentage = goals?.carbs && goals.carbs > 0 
-    ? Math.min(100, Math.round(((dailyTotal?.carbs || 0) / goals.carbs) * 100)) 
-    : 0;
-  const proteinGoalPercentage = goals?.protein && goals.protein > 0 
-    ? Math.min(100, Math.round(((dailyTotal?.protein || 0) / goals.protein) * 100)) 
-    : 0;
-  const fatGoalPercentage = goals?.fat && goals.fat > 0 
-    ? Math.min(100, Math.round(((dailyTotal?.fat || 0) / goals.fat) * 100)) 
-    : 0;
+  // Calculate circular progress for calories
+  const caloriesProgressAngle = Math.min(360, (caloriesProgress / 100) * 360);
 
   if (loading) {
     return (
       <ScreenContainer>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={colors.accent} />
           <Text style={styles.loadingText}>Loading diary...</Text>
         </View>
       </ScreenContainer>
     );
   }
 
-  // Calculate circular progress for calories
-  const caloriesProgressAngle = Math.min(360, (caloriesProgress / 100) * 360);
-
   return (
     <ScreenContainer noPadding={true}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="chevron-back" size={24} color={colors.label} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Daily Activity</Text>
+        <Text style={styles.headerTitle}>Diary</Text>
         <View style={styles.headerRight}>
           <Text style={styles.headerDate}>
             {new Date(selectedDate).toLocaleDateString('en-US', {
-              month: 'long',
+              month: 'short',
               day: 'numeric',
             })}
           </Text>
           <TouchableOpacity style={styles.calendarButton}>
-            <Ionicons name="calendar-outline" size={20} color="#10b981" />
+            <Ionicons name="calendar-outline" size={20} color={colors.accent} />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-        {/* Circular Progress Chart */}
-        {goals.dailyCalories ? (
-          <View style={styles.circularProgressContainer}>
-            <View style={styles.circularProgressWrapper}>
-              {/* Circular Progress Ring */}
-              <View style={styles.circularProgressOuter}>
-                <View style={styles.circularProgress}>
-                  <View style={styles.circularProgressInner}>
-                    <Text style={styles.circularProgressValue}>
-                      {Math.round(dailyTotal.calories || 0)}
+        <View style={styles.summaryCard}>
+          <CalorieRing
+            consumed={dailyTotal.calories || 0}
+            goal={goals.dailyCalories || 2000}
+          />
+          <View style={styles.macroCol}>
+            {[
+              {
+                key: 'protein',
+                label: 'Protein',
+                color: colors.accent,
+                value: dailyTotal.protein || 0,
+                goal: goals.protein || 150,
+              },
+              {
+                key: 'carbs',
+                label: 'Carbs',
+                color: colors.orange,
+                value: dailyTotal.carbs || 0,
+                goal: goals.carbs || 200,
+              },
+              {
+                key: 'fat',
+                label: 'Fats',
+                color: '#bf5af2',
+                value: dailyTotal.fat || 0,
+                goal: goals.fat || 60,
+              },
+            ].map((m) => {
+              const pct = Math.min(100, ((m.value || 0) / (m.goal || 1)) * 100);
+              return (
+                <View key={m.key} style={styles.macroRow}>
+                  <View style={styles.macroTop}>
+                    <Text style={styles.macroName}>{m.label}</Text>
+                    <Text style={styles.macroVals}>
+                      {Math.round(m.value)} / {Math.round(m.goal)}g
                     </Text>
-                    <Text style={styles.circularProgressLabel}>Total kcal</Text>
+                  </View>
+                  <View style={styles.macroTrack}>
+                    <View
+                      style={[
+                        styles.macroFill,
+                        { width: `${pct}%`, backgroundColor: m.color },
+                      ]}
+                    />
                   </View>
                 </View>
-              </View>
-            </View>
+              );
+            })}
+          </View>
+        </View>
 
-            {/* Macronutrient Boxes */}
-            <View style={styles.macroBoxesContainer}>
-              <View style={styles.macroBox}>
-                <View style={[styles.macroDot, { backgroundColor: '#ec4899' }]} />
-                <Text style={styles.macroBoxLabel}>Carbs</Text>
-                <Text style={styles.macroBoxPercentage}>{carbsGoalPercentage}%</Text>
-              </View>
-              <View style={styles.macroBox}>
-                <View style={[styles.macroDot, { backgroundColor: '#3b82f6' }]} />
-                <Text style={styles.macroBoxLabel}>Protein</Text>
-                <Text style={styles.macroBoxPercentage}>{proteinGoalPercentage}%</Text>
-              </View>
-              <View style={styles.macroBox}>
-                <View style={[styles.macroDot, { backgroundColor: '#f59e0b' }]} />
-                <Text style={styles.macroBoxLabel}>Fats</Text>
-                <Text style={styles.macroBoxPercentage}>{fatGoalPercentage}%</Text>
-              </View>
-            </View>
-          </View>
+        {!goals.dailyCalories ? (
+          <TouchableOpacity
+            style={styles.goalsBanner}
+            onPress={() => navigation.navigate('CalorieGoalsScreen')}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="flag" size={18} color={colors.onAccent} />
+            <Text style={styles.goalsBannerText}>Set your nutrition goals</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.onAccent} />
+          </TouchableOpacity>
         ) : (
-          <View style={styles.setGoalsCard}>
-            <Ionicons name="nutrition-outline" size={24} color="#2563eb" />
-            <Text style={styles.setGoalsText}>Set your nutrition goals to track progress</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CalorieGoalsScreen')}>
-              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.goalsBanner}
+            onPress={() => navigation.navigate('CalorieGoalsScreen')}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="flag" size={18} color={colors.onAccent} />
+            <Text style={styles.goalsBannerText}>Nutrition goals · edit targets</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.onAccent} />
+          </TouchableOpacity>
         )}
 
-        {/* Meals */}
         {Object.keys(MEAL_TYPES).map((mealType) => renderMealSection(mealType))}
       </ScrollView>
 
@@ -878,13 +889,14 @@ const NutritionDiaryScreen = ({ navigation }) => {
                     setSelectedFood(null);
                   }}
                 >
-                  <Ionicons name="close" size={24} color="#111827" />
+                  <Ionicons name="close" size={24} color={colors.label} />
                 </TouchableOpacity>
               </View>
 
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search for food (e.g., green salad, chicken breast)"
+                placeholderTextColor={colors.label3}
                 value={searchQuery}
                 onChangeText={(text) => {
                   setSearchQuery(text);
@@ -895,7 +907,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
               {searching && (
                 <View style={styles.searchingContainer}>
-                  <ActivityIndicator size="small" color="#2563eb" />
+                  <ActivityIndicator size="small" color={colors.accent} />
                   <Text style={styles.searchingText}>Searching...</Text>
                 </View>
               )}
@@ -916,7 +928,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
                           {Math.round(item.calories || 0)} kcal per 100g
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                      <Ionicons name="chevron-forward" size={20} color={colors.label3} />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -924,7 +936,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
 
               {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
                 <View style={styles.noResults}>
-                  <Ionicons name="search-outline" size={48} color="#9ca3af" style={styles.noResultsIcon} />
+                  <Ionicons name="search-outline" size={48} color={colors.label3} style={styles.noResultsIcon} />
                   <Text style={styles.noResultsText}>No foods found</Text>
                   <Text style={styles.noResultsSubtext}>
                     Try searching with a different term (e.g., "chicken breast", "apple", "rice")
@@ -992,7 +1004,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
                     }
                   }}
                 >
-                  <Ionicons name="close" size={24} color="#111827" />
+                  <Ionicons name="close" size={24} color={colors.label} />
                 </TouchableOpacity>
               </View>
 
@@ -1000,6 +1012,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
               <TextInput
                 style={styles.amountInput}
                 placeholder="100"
+                placeholderTextColor={colors.label3}
                 value={foodAmount}
                 onChangeText={setFoodAmount}
                 keyboardType="numeric"
@@ -1037,7 +1050,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
               )}
 
               <TouchableOpacity style={styles.addButton} onPress={handleAddFood}>
-                <Ionicons name="add-circle" size={20} color="#ffffff" />
+                <Ionicons name="add-circle" size={20} color={colors.onAccent} />
                 <Text style={styles.addButtonText}>Add to {MEAL_TYPES[selectedMeal]?.label}</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -1056,28 +1069,31 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingText: {
-    color: '#6b7280',
+    color: colors.label2,
     fontSize: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
+    paddingTop: Platform.OS === 'ios' ? 52 : 24,
+    paddingBottom: 12,
+    paddingHorizontal: space.pad,
+    backgroundColor: colors.bg,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 2,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '600',
+    color: colors.label,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -1088,15 +1104,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginLeft: 'auto',
+    zIndex: 2,
   },
   headerDate: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
+    color: colors.label2,
   },
   calendarButton: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1105,41 +1124,82 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.bg,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: space.pad,
     paddingBottom: 32,
+    gap: 14,
+  },
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+  },
+  macroCol: { flex: 1, gap: 12 },
+  macroRow: { gap: 6 },
+  macroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  macroName: { fontSize: 12, fontWeight: '600', color: colors.label2 },
+  macroVals: { fontSize: 11, color: colors.label3, fontWeight: '500' },
+  macroTrack: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.surface2,
+    overflow: 'hidden',
+  },
+  macroFill: { height: '100%', borderRadius: 4 },
+  goalsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.accent,
+    borderRadius: radii.card,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  goalsBannerText: {
+    flex: 1,
+    color: colors.onAccent,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  mealTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    padding: space.pad,
+    backgroundColor: colors.surface,
   },
   dateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
   },
   statsCard: {
-    backgroundColor: '#ffffff',
-    margin: 16,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    marginVertical: 12,
+    padding: space.pad,
+    borderRadius: radii.card,
   },
   statsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 16,
   },
   statsRow: {
@@ -1152,37 +1212,35 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.accent,
   },
   statLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
     marginTop: 4,
   },
-  // Circular Progress Chart
   circularProgressContainer: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
+    marginTop: 16,
+    marginBottom: 24,
   },
   circularProgressWrapper: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   circularProgressOuter: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    borderWidth: 20,
-    borderColor: '#e5e7eb',
+    borderWidth: 16,
+    borderColor: colors.surface2,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
   circularProgress: {
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1191,29 +1249,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   circularProgressValue: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
+    letterSpacing: -0.5,
   },
   circularProgressLabel: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    color: colors.label3,
     marginTop: 4,
   },
-  // Macronutrient Boxes
   macroBoxesContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     width: '100%',
   },
   macroBox: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
     padding: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   macroDot: {
     width: 8,
@@ -1223,18 +1279,18 @@ const styles = StyleSheet.create({
   },
   macroBoxLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.label3,
     marginBottom: 4,
   },
   macroBoxPercentage: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
   },
   progressTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 16,
   },
   progressRow: {
@@ -1245,18 +1301,18 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 4,
   },
   progressValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 8,
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.surface2,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 4,
@@ -1267,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   progressPercentage: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.label3,
   },
   macrosProgress: {
     flexDirection: 'row',
@@ -1280,32 +1336,33 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.label3,
     marginBottom: 4,
   },
   macroValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 4,
   },
   macroPercentage: {
     fontSize: 12,
-    color: '#10b981',
+    color: colors.accent,
   },
   mealSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   mealHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   mealTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
+    letterSpacing: -0.2,
   },
   addMealButton: {
     flexDirection: 'row',
@@ -1313,24 +1370,22 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#f0fdf4',
+    borderRadius: radii.sm,
+    backgroundColor: colors.accentSoft,
   },
   addMealButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: colors.accent,
   },
   mealItems: {
-    marginTop: 8,
+    marginTop: 4,
+    gap: 10,
   },
   foodItemCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: space.pad,
   },
   foodItemHeader: {
     flexDirection: 'row',
@@ -1344,10 +1399,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   foodIconPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.surface2,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1357,48 +1412,54 @@ const styles = StyleSheet.create({
   },
   foodItemName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '600',
+    color: colors.label,
     marginBottom: 4,
   },
   foodItemCalories: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
   },
   foodItemDetails: {
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.sep,
   },
   foodDetailText: {
-    fontSize: 14,
-    color: '#374151',
-    marginBottom: 6,
+    fontSize: 13,
+    color: colors.label2,
+    marginBottom: 4,
   },
   removeButton: {
-    padding: 4,
+    padding: 6,
   },
   emptyMeal: {
-    padding: 20,
+    padding: 18,
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    gap: 8,
   },
   emptyMealText: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 13,
+    color: colors.label3,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 12,
   },
   setGoalsCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F0FE',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: space.pad,
+    borderRadius: radii.card,
     gap: 12,
+    marginBottom: 16,
   },
   setGoalsText: {
     flex: 1,
     fontSize: 14,
-    color: '#2563eb',
+    color: colors.label2,
     fontWeight: '500',
   },
   modalContainer: {
@@ -1407,13 +1468,13 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    padding: space.pad,
     maxHeight: '90%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
@@ -1425,14 +1486,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '600',
+    color: colors.label,
+    flex: 1,
+    marginRight: 12,
   },
   searchInput: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: colors.surface2,
+    borderRadius: radii.md,
     padding: 16,
     fontSize: 16,
+    color: colors.label,
     marginBottom: 16,
   },
   searchingContainer: {
@@ -1443,7 +1507,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   searchingText: {
-    color: '#6b7280',
+    color: colors.label2,
     fontSize: 14,
   },
   searchResultsList: {
@@ -1453,9 +1517,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.sep,
   },
   searchResultLeft: {
     flex: 1,
@@ -1463,12 +1527,12 @@ const styles = StyleSheet.create({
   searchResultName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 4,
   },
   searchResultNutrition: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
   },
   noResults: {
     padding: 40,
@@ -1480,31 +1544,32 @@ const styles = StyleSheet.create({
   noResultsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.label2,
     marginBottom: 8,
   },
   noResultsSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: colors.label3,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   amountLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 8,
   },
   amountInput: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: colors.surface2,
+    borderRadius: radii.md,
     padding: 16,
     fontSize: 16,
+    color: colors.label,
     marginBottom: 20,
   },
   addButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radii.md,
     padding: 16,
     alignItems: 'center',
     flexDirection: 'row',
@@ -1512,22 +1577,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '600',
   },
   nutritionPreview: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: colors.surface2,
+    borderRadius: radii.md,
+    padding: space.pad,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   nutritionPreviewTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
     marginBottom: 12,
   },
   nutritionPreviewRow: {
@@ -1537,12 +1600,12 @@ const styles = StyleSheet.create({
   },
   nutritionPreviewLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.label2,
   },
   nutritionPreviewValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.label,
   },
 });
 

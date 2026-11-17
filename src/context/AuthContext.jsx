@@ -1,7 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { login as loginRequest, me as meRequest, register as registerRequest } from '../api/services/authService';
+import {
+  login as loginRequest,
+  me as meRequest,
+  register as registerRequest,
+  firebaseAuth as firebaseAuthRequest,
+  devPhoneAuth as devPhoneAuthRequest,
+  linkPhone as linkPhoneRequest,
+} from '../api/services/authService';
+import { retryGymLink } from '../api/services/attendanceService';
 import { setAuthToken } from '../api/client';
 import { deleteToken, getToken, saveToken } from '../storage/tokenStorage';
+import { getReadableError } from '../utils/apiError';
 
 const AuthContext = createContext(undefined);
 
@@ -9,6 +18,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [gymLinked, setGymLinked] = useState(true);
+  const [needsGymWait, setNeedsGymWait] = useState(false);
+  const [needsGymChoice, setNeedsGymChoice] = useState(false);
+  const [gymMatches, setGymMatches] = useState([]);
+  const [needsPhoneLink, setNeedsPhoneLink] = useState(false);
 
   const persistToken = useCallback(async (value) => {
     setToken(value);
@@ -21,6 +35,84 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const normalizeUser = useCallback((raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = raw.id || raw.userId || raw.user_id;
+    if (!id) return { ...raw };
+    return { ...raw, id, userId: id };
+  }, []);
+
+  const applySession = useCallback(
+    async (response, { showGymWait = false, promptPhoneLink = false } = {}) => {
+      const nextToken = response?.token || response?.accessToken;
+      const userId = response?.userId || response?.user?.id || response?.user?.userId;
+
+      if (!nextToken) {
+        throw new Error('No token received from login');
+      }
+
+      await persistToken(nextToken);
+
+      if (response?.user) {
+        setUser(normalizeUser(response.user));
+      } else if (userId) {
+        setUser({ id: userId, userId });
+      }
+
+      let hydrated = null;
+      try {
+        const meUser = await meRequest();
+        hydrated = normalizeUser(meUser);
+        if (hydrated?.id) {
+          setUser(hydrated);
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('[Auth] /me after login failed:', e?.message || e);
+        }
+      }
+
+      const matches = Array.isArray(response?.gymMatches)
+        ? response.gymMatches
+        : Array.isArray(response?.matches)
+          ? response.matches
+          : [];
+      const choice =
+        Boolean(response?.needsGymChoice) ||
+        (!response?.gymLinked && matches.length > 1);
+
+      const isLinked =
+        response && Object.prototype.hasOwnProperty.call(response, 'gymLinked')
+          ? Boolean(response.gymLinked)
+          : true;
+
+      const hasPhone = Boolean(
+        hydrated?.phone || response?.phone || response?.user?.phone
+      );
+
+      const askPhone =
+        Boolean(promptPhoneLink) &&
+        (Boolean(response?.needsPhoneLink) || !hasPhone);
+
+      setGymMatches(matches);
+      setNeedsGymChoice(choice);
+      setGymLinked(isLinked && !choice);
+      setNeedsPhoneLink(askPhone);
+      setNeedsGymWait(showGymWait && !isLinked && !choice && !askPhone);
+
+      return {
+        token: nextToken,
+        userId,
+        gymLinked: isLinked && !choice,
+        needsGymChoice: choice,
+        needsPhoneLink: askPhone,
+        gymMatches: matches,
+        gym: response?.gym || null,
+      };
+    },
+    [persistToken, normalizeUser],
+  );
+
   const bootstrap = useCallback(async () => {
     try {
       const storedToken = await getToken();
@@ -29,20 +121,45 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       await persistToken(storedToken);
-      // Don't call meRequest() here - bootstrap will load user data
-      // This prevents duplicate API calls
+      try {
+        const meUser = await meRequest();
+        const normalized = normalizeUser(meUser);
+        if (normalized?.id) {
+          setUser(normalized);
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('[Auth] bootstrap /me failed:', e?.message || e);
+        }
+      }
+      try {
+        const link = await retryGymLink();
+        const matches = Array.isArray(link?.matches) ? link.matches : [];
+        const choice =
+          Boolean(link?.needsGymChoice) || (!link?.linked && matches.length > 1);
+        setGymMatches(matches);
+        setNeedsGymChoice(choice);
+        setGymLinked(Boolean(link?.linked) && !choice);
+        setNeedsGymWait(false);
+      } catch {
+        // Keep default; Gym tab can still show wait state if APIs 404
+      }
     } catch (error) {
       await persistToken(null);
       setUser(null);
+      setGymLinked(true);
+      setNeedsGymWait(false);
+      setNeedsGymChoice(false);
+      setNeedsPhoneLink(false);
+      setGymMatches([]);
     } finally {
       setInitializing(false);
     }
-  }, [persistToken]);
-  
-  // Expose setUser so BootstrapContext can update it
+  }, [persistToken, normalizeUser]);
+
   const updateUser = useCallback((userData) => {
-    setUser(userData);
-  }, []);
+    setUser(normalizeUser(userData));
+  }, [normalizeUser]);
 
   useEffect(() => {
     bootstrap();
@@ -51,86 +168,182 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(
     async (payload) => {
       const response = await loginRequest(payload);
-      
-      // Backend returns: { token, userId } (after extractData)
-      // Response structure from backend: { message: "...", data: { token, userId } }
-      // extractData should extract response.data.data = { token, userId }
-      console.log('[Auth] Login response:', JSON.stringify(response, null, 2));
-      
-      const nextToken = response?.token || response?.accessToken;
-      const userId = response?.userId || response?.user?.id;
-      
-      if (!nextToken) {
-        console.error('[Auth] ❌ No token in login response');
-        console.error('[Auth] Full response:', JSON.stringify(response, null, 2));
-        console.error('[Auth] Response keys:', Object.keys(response || {}));
-        throw new Error('No token received from login');
+      if (__DEV__) {
+        console.log('[Auth] Login response:', JSON.stringify(response, null, 2));
       }
-      
-      console.log('[Auth] ✅ Token received, saving...');
-      await persistToken(nextToken);
-      
-      // If user object is provided, set it (for backward compatibility)
-      // Otherwise, bootstrap will load the full user data
-      if (response?.user) {
-        setUser(response.user);
-      } else if (userId) {
-        // Minimal user object with just ID - bootstrap will load full data
-        console.log('[Auth] Setting minimal user object with ID:', userId);
-        setUser({ id: userId });
-      }
-      
-      // Bootstrap will be loaded automatically by BootstrapContext
-      // This ensures we only make ONE API call after login
-      console.log('[Auth] ✅ Login successful, bootstrap will load user data');
+      return applySession(response, { showGymWait: true });
     },
-    [persistToken],
+    [applySession],
   );
+
+  const loginWithFirebase = useCallback(
+    async (idToken, { fromGoogle = false } = {}) => {
+      try {
+        const response = await firebaseAuthRequest(idToken);
+        const session = await applySession(response, {
+          showGymWait: true,
+          promptPhoneLink: fromGoogle,
+        });
+        return { success: true, ...session };
+      } catch (error) {
+        console.error('[Auth] Firebase login error:', error);
+        return { success: false, error: getReadableError(error) };
+      }
+    },
+    [applySession],
+  );
+
+  /** Expo Go / tunnel: phone only, no OTP */
+  const loginWithDevPhone = useCallback(
+    async (phone) => {
+      try {
+        const response = await devPhoneAuthRequest(phone);
+        const session = await applySession(response, { showGymWait: true });
+        return { success: true, ...session };
+      } catch (error) {
+        console.error('[Auth] Dev phone login error:', error);
+        return { success: false, error: getReadableError(error) };
+      }
+    },
+    [applySession],
+  );
+
+  const linkPhoneForGym = useCallback(
+    async (phone) => {
+      try {
+        const result = await linkPhoneRequest(phone);
+        setNeedsPhoneLink(false);
+        setUser((prev) => (prev ? { ...prev, phone: result?.phone || phone } : prev));
+
+        const matches = Array.isArray(result?.gymMatches) ? result.gymMatches : [];
+        const choice =
+          Boolean(result?.needsGymChoice) || (!result?.gymLinked && matches.length > 1);
+        setGymMatches(matches);
+        setNeedsGymChoice(choice);
+        setGymLinked(Boolean(result?.gymLinked) && !choice);
+        setNeedsGymWait(!result?.gymLinked && !choice);
+
+        try {
+          const meUser = await meRequest();
+          const normalized = normalizeUser(meUser);
+          if (normalized?.id) setUser(normalized);
+        } catch {
+          /* non-fatal */
+        }
+
+        return { success: true, ...result };
+      } catch (error) {
+        console.error('[Auth] linkPhone error:', error);
+        return { success: false, error: getReadableError(error) };
+      }
+    },
+    [normalizeUser],
+  );
+
+  const skipPhoneLink = useCallback(() => {
+    setNeedsPhoneLink(false);
+    if (!gymLinked && !needsGymChoice) {
+      setNeedsGymWait(true);
+    }
+  }, [gymLinked, needsGymChoice]);
 
   const register = useCallback(
     async (payload) => {
       const response = await registerRequest(payload);
-      // Response structure: { user, token } after extractData
-      const nextToken = response?.token || response?.accessToken;
-      const registeredUser = response?.user;
-      
-      if (!nextToken) {
-        console.error('Registration response:', response);
-        throw new Error('No token received from registration');
-      }
-      
-      await persistToken(nextToken);
-      setUser(registeredUser);
+      return applySession(response, { showGymWait: true });
     },
-    [persistToken],
+    [applySession],
   );
-
-  const logout = useCallback(async () => {
-    setUser(null);
-    await persistToken(null);
-    // Bootstrap data will be cleared by BootstrapContext
-  }, [persistToken]);
 
   const refreshUser = useCallback(async () => {
     if (!token) {
       return;
     }
     const updatedUser = await meRequest();
-    setUser(updatedUser);
-  }, [token]);
+    setUser(normalizeUser(updatedUser));
+  }, [token, normalizeUser]);
+
+  const refreshGymLink = useCallback(async () => {
+    const result = await retryGymLink();
+    const matches = Array.isArray(result?.matches) ? result.matches : [];
+    const choice = Boolean(result?.needsGymChoice) || (!result?.linked && matches.length > 1);
+    const linked = Boolean(result?.linked) && !choice;
+    setGymMatches(matches);
+    setNeedsGymChoice(choice);
+    setGymLinked(linked);
+    if (linked) {
+      setNeedsGymWait(false);
+    }
+    return result;
+  }, []);
+
+  const completeGymChoice = useCallback((result) => {
+    setNeedsGymChoice(false);
+    setGymMatches([]);
+    setGymLinked(Boolean(result?.linked));
+    setNeedsGymWait(false);
+  }, []);
+
+  const dismissGymWait = useCallback(() => {
+    setNeedsGymWait(false);
+  }, []);
+
+  const logout = useCallback(async () => {
+    setUser(null);
+    setGymLinked(true);
+    setNeedsGymWait(false);
+    setNeedsGymChoice(false);
+    setNeedsPhoneLink(false);
+    setGymMatches([]);
+    await persistToken(null);
+  }, [persistToken]);
 
   const value = useMemo(
     () => ({
       user,
       token,
       initializing,
+      gymLinked,
+      needsGymWait,
+      needsGymChoice,
+      needsPhoneLink,
+      gymMatches,
       login,
+      loginWithFirebase,
+      loginWithDevPhone,
+      linkPhoneForGym,
+      skipPhoneLink,
       register,
       logout,
       refreshUser,
-      updateUser, // Expose updateUser for BootstrapContext
+      refreshGymLink,
+      completeGymChoice,
+      dismissGymWait,
+      setGymLinked,
+      updateUser,
     }),
-    [initializing, login, logout, refreshUser, register, token, user, updateUser],
+    [
+      initializing,
+      login,
+      loginWithFirebase,
+      loginWithDevPhone,
+      linkPhoneForGym,
+      skipPhoneLink,
+      logout,
+      refreshUser,
+      refreshGymLink,
+      completeGymChoice,
+      dismissGymWait,
+      register,
+      token,
+      user,
+      updateUser,
+      gymLinked,
+      needsGymWait,
+      needsGymChoice,
+      needsPhoneLink,
+      gymMatches,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -143,5 +356,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-

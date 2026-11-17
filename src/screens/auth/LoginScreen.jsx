@@ -1,84 +1,20 @@
-import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { FormTextInput } from '../../components/FormTextInput';
+import { StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/ScreenContainer';
-import { useAuth } from '../../context/AuthContext';
-import { getReadableError } from '../../utils/apiError';
+import FirebaseAuthButtons from '../../components/auth/FirebaseAuthButtons';
 
-const LoginScreen = ({ navigation }) => {
-  const { login } = useAuth();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    // Prevent multiple rapid clicks
-    if (loading || isSubmitting) {
-      return;
-    }
-
-    if (!identifier || !password) {
-      Alert.alert('Missing fields', 'Please fill in both username/email and password.');
-      return;
-    }
-
-    setLoading(true);
-    setIsSubmitting(true);
-    try {
-      await login({ identifier, password });
-    } catch (error) {
-      // Handle rate limiting specifically
-      if (error.response?.status === 429) {
-        Alert.alert(
-          'Too Many Requests',
-          'You have made too many login attempts. Please wait a few minutes before trying again.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Login failed', getReadableError(error));
-      }
-    } finally {
-      setLoading(false);
-      // Add a small delay before allowing another submission
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 1000);
-    }
-  };
-
+const LoginScreen = () => {
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome back 👋</Text>
-        <Text style={styles.subtitle}>Log in to manage your workouts and gym memberships.</Text>
+        <Text style={styles.title}>Sign in</Text>
+        <Text style={styles.subtitle}>
+          Continue with phone or Google. After Google, you can add your gym phone
+          to sync membership — or skip.
+        </Text>
       </View>
 
-      <FormTextInput
-        label="Username / Email / Phone"
-        placeholder="e.g. alex2025 or alex@email.com"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={identifier}
-        onChangeText={setIdentifier}
-      />
-
-      <FormTextInput
-        label="Password"
-        placeholder="********"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      <PrimaryButton title="Log in" onPress={handleSubmit} loading={loading} />
-
-      <View style={styles.footer}>
-        <Text>New here?</Text>
-        <Text style={styles.link} onPress={() => navigation.navigate('Register')}>
-          Create an account
-        </Text>
+      <View style={styles.authPrimary}>
+        <FirebaseAuthButtons />
       </View>
     </ScreenContainer>
   );
@@ -88,6 +24,7 @@ const styles = StyleSheet.create({
   header: {
     gap: 8,
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 28,
@@ -96,18 +33,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#6b7280',
+    fontSize: 15,
+    lineHeight: 22,
   },
-  footer: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-  },
-  link: {
-    color: '#2563eb',
-    fontWeight: '600',
+  authPrimary: {
+    paddingHorizontal: 20,
   },
 });
 
 export default LoginScreen;
-
-

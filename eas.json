@@ -18,13 +18,26 @@
       }
     },
     "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_USERS_SERVICE_URL": "https://users-api.fitsera.in",
+        "EXPO_PUBLIC_GYM_SERVICE_URL": "https://api.fitsera.in",
+        "EXPO_PUBLIC_APP_NAME": "Fitsera",
+        "EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID": "732410775120-1j5pp6sp4uh2ifrodu3s3o00ddurie2f.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6799401083"
+      }
+    }
   }
 }
-

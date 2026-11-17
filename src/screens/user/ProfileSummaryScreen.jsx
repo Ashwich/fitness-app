@@ -10,8 +10,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { upsertProfile } from '../../api/services/profileService';
+import { upsertProfile, upsertPreferences } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
+import { suggestWorkout } from '../../api/services/workoutService';
+import { enrichWorkoutDays, STARTER_PLAN_DAYS } from '../../data/exercises';
+import { computeAutoGoals } from '../../utils/autoGoals';
+import { setWaterGoal } from '../../services/waterIntakeService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileSummaryScreen = ({ navigation, route }) => {
   const userProfile = route.params?.userProfile || {};
@@ -19,6 +24,9 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
   const physicalInfo = route.params?.physicalInfo || {};
   const fitnessGoals = route.params?.fitnessGoals || {};
   const calorieGoals = route.params?.calorieGoals || {};
+  const autoGoals =
+    route.params?.autoGoals ||
+    computeAutoGoals({ personalInfo, physicalInfo, fitnessGoals });
   const [saving, setSaving] = useState(false);
 
   // Combine all data into a single profile object
@@ -33,55 +41,98 @@ const ProfileSummaryScreen = ({ navigation, route }) => {
     workoutsPerWeek: fitnessGoals?.workoutsPerWeek || userProfile?.workoutsPerWeek,
     timePerWorkout: fitnessGoals?.timePerWorkout || userProfile?.timePerWorkout,
     calorieGoals: calorieGoals || userProfile?.calorieGoals,
+    stepGoal: autoGoals?.stepGoal,
+    waterGoalLiters: autoGoals?.waterGoalLiters,
   };
 
   const handleCompleteProfile = async () => {
     setSaving(true);
     try {
-      // Build complete profile data for backend
       const profileData = {
         ...personalInfo,
-        ...physicalInfo,
+        weightKg: physicalInfo?.weightKg,
+        heightCm: physicalInfo?.heightCm,
+        bmi: physicalInfo?.bmi ?? autoGoals?.bmi,
+        bmiCategory: physicalInfo?.bmiCategory ?? autoGoals?.bmiCategory,
         fitnessGoals: {
           primaryGoal: fitnessGoals?.primaryGoal,
         },
+        goalType: fitnessGoals?.primaryGoal,
         activityLevel: fitnessGoals?.exerciseLevel,
         workoutsPerWeek: fitnessGoals?.workoutsPerWeek,
         timePerWorkout: fitnessGoals?.timePerWorkout,
         calorieGoals: calorieGoals,
       };
 
-      // Remove null/undefined values
-      Object.keys(profileData).forEach(key => {
+      Object.keys(profileData).forEach((key) => {
         if (profileData[key] === null || profileData[key] === undefined) {
           delete profileData[key];
         }
       });
 
-      // Clean nested objects
-      if (profileData.fitnessGoals) {
-        Object.keys(profileData.fitnessGoals).forEach(key => {
-          if (profileData.fitnessGoals[key] === null || profileData.fitnessGoals[key] === undefined) {
-            delete profileData.fitnessGoals[key];
-          }
-        });
-      }
-
-      if (profileData.calorieGoals) {
-        Object.keys(profileData.calorieGoals).forEach(key => {
-          if (profileData.calorieGoals[key] === null || profileData.calorieGoals[key] === undefined) {
-            delete profileData.calorieGoals[key];
-          }
-        });
-      }
-
-      // Save complete profile
       await upsertProfile(profileData);
 
+      // Steps + water goals
+      const stepGoal = autoGoals?.stepGoal || 8000;
+      const waterLiters = autoGoals?.waterGoalLiters || 3;
+      try {
+        await upsertPreferences({
+          stepGoal,
+          waterGoalMl: Math.round(waterLiters * 1000),
+        });
+      } catch (e) {
+        console.warn('[ProfileSummary] preferences upsert:', e?.message);
+      }
+      try {
+        await setWaterGoal(waterLiters);
+      } catch {
+        /* ignore */
+      }
+
+      let workoutNote = '';
+      try {
+        const result = await suggestWorkout();
+        if (result?.plan) {
+          workoutNote = ' A workout plan was suggested for you.';
+        } else {
+          await AsyncStorage.setItem(
+            'fitsera_pending_starter_workout',
+            JSON.stringify(enrichWorkoutDays(STARTER_PLAN_DAYS))
+          );
+          workoutNote = ' A visual Push/Pull/Legs starter was prepared for you.';
+        }
+      } catch {
+        try {
+          await AsyncStorage.setItem(
+            'fitsera_pending_starter_workout',
+            JSON.stringify(enrichWorkoutDays(STARTER_PLAN_DAYS))
+          );
+          workoutNote = ' A visual Push/Pull/Legs starter was prepared for you.';
+        } catch {
+          /* ignore */
+        }
+      }
+
       Alert.alert(
-        'Profile Complete! 🎉',
-        'Your fitness profile has been successfully created. Let\'s start your journey!',
+        'Profile Complete!',
+        `Macros, water (${waterLiters}L), and steps (${stepGoal}) are set.${workoutNote}`,
         [
+          {
+            text: 'View workout',
+            onPress: () => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'UserDashboard' }],
+              });
+              setTimeout(() => {
+                try {
+                  navigation.getParent()?.navigate('Workout');
+                } catch {
+                  /* ignore */
+                }
+              }, 400);
+            },
+          },
           {
             text: 'Go to Dashboard',
             onPress: () => {

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -15,25 +14,36 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import {
   getStepsGoal,
   setStepsGoal,
+  setCalorieBurnGoal,
   getTodaySteps,
   getWeeklySteps,
   startStepTracking,
   stopStepTracking,
+  getHealthAvailabilityMessage,
 } from '../../services/healthService';
-
-const { width } = Dimensions.get('window');
+import {
+  fetchPreferences,
+  upsertPreferences,
+} from '../../api/services/profileService';
+import { getReadableError } from '../../utils/apiError';
 
 const StepsGoalScreen = ({ navigation }) => {
   const [stepsGoal, setStepsGoalState] = useState('10000');
+  const [calorieBurnGoal, setCalorieBurnGoal] = useState('400');
   const [todaySteps, setTodaySteps] = useState(0);
   const [weeklyData, setWeeklyData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [healthHint, setHealthHint] = useState('');
 
-  // --- LOGIC REMAINS UNCHANGED ---
   const loadData = useCallback(async () => {
     try {
-      const goal = await getStepsGoal();
-      setStepsGoalState(goal.toString());
+      setHealthHint(getHealthAvailabilityMessage() || '');
+      const prefs = await fetchPreferences().catch(() => null);
+      const localGoal = await getStepsGoal();
+      const stepGoal = prefs?.stepGoal || localGoal || 10000;
+      const burnGoal = prefs?.calorieBurnGoal || 400;
+      setStepsGoalState(String(stepGoal));
+      setCalorieBurnGoal(String(burnGoal));
       const steps = await getTodaySteps();
       setTodaySteps(steps);
       const weekly = await getWeeklySteps();
@@ -57,16 +67,23 @@ const StepsGoalScreen = ({ navigation }) => {
 
   const handleSaveGoal = async () => {
     const goal = parseInt(stepsGoal, 10);
-    if (isNaN(goal) || goal <= 0) {
-      Alert.alert('Invalid Goal', 'Please enter a valid step goal.');
+    const burn = parseInt(calorieBurnGoal, 10);
+    if (isNaN(goal) || goal < 1000) {
+      Alert.alert('Invalid Goal', 'Step goal must be at least 1000.');
+      return;
+    }
+    if (isNaN(burn) || burn < 50) {
+      Alert.alert('Invalid Goal', 'Calorie burn goal must be at least 50.');
       return;
     }
     setLoading(true);
     try {
       await setStepsGoal(goal);
-      Alert.alert('Success', 'Goal updated!');
+      await setCalorieBurnGoal(burn);
+      await upsertPreferences({ stepGoal: goal, calorieBurnGoal: burn });
+      Alert.alert('Success', 'Goals updated!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save.');
+      Alert.alert('Error', getReadableError(error) || 'Failed to save.');
     } finally {
       setLoading(false);
     }
@@ -101,6 +118,13 @@ const StepsGoalScreen = ({ navigation }) => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
+        {healthHint ? (
+          <View style={styles.hintBanner}>
+            <Ionicons name="information-circle-outline" size={18} color="#7c3aed" />
+            <Text style={styles.hintText}>{healthHint}</Text>
+          </View>
+        ) : null}
+
         {/* Progress Ring Card */}
         <View style={styles.mainCard}>
           <View style={styles.ringContainer}>
@@ -166,7 +190,8 @@ const StepsGoalScreen = ({ navigation }) => {
 
         {/* Goal Management Section */}
         <View style={styles.goalSection}>
-            <Text style={styles.historyTitle}>Adjust Daily Goal</Text>
+            <Text style={styles.historyTitle}>Adjust Daily Goals</Text>
+            <Text style={styles.goalFieldLabel}>Step goal</Text>
             <View style={styles.inputContainer}>
                 <FormTextInput
                     placeholder="10000"
@@ -175,13 +200,23 @@ const StepsGoalScreen = ({ navigation }) => {
                     onChangeText={setStepsGoalState}
                     containerStyle={styles.customInput}
                 />
-                <PrimaryButton
-                    title="Update"
-                    onPress={handleSaveGoal}
-                    loading={loading}
-                    style={styles.updateButton}
+            </View>
+            <Text style={styles.goalFieldLabel}>Calorie burn goal</Text>
+            <View style={styles.inputContainer}>
+                <FormTextInput
+                    placeholder="400"
+                    keyboardType="numeric"
+                    value={calorieBurnGoal}
+                    onChangeText={setCalorieBurnGoal}
+                    containerStyle={styles.customInput}
                 />
             </View>
+            <PrimaryButton
+                title="Update goals"
+                onPress={handleSaveGoal}
+                loading={loading}
+                style={styles.updateButton}
+            />
         </View>
 
       </ScrollView>
@@ -313,17 +348,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 40,
   },
+  goalFieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 6,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 12,
   },
   customInput: { flex: 1, marginBottom: 0 },
   updateButton: {
     height: 54,
     paddingHorizontal: 24,
     borderRadius: 16,
+    marginTop: 4,
   },
+  hintBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+  },
+  hintText: { flex: 1, fontSize: 12, lineHeight: 18, color: '#6b21a8' },
 });
 
 export default StepsGoalScreen;

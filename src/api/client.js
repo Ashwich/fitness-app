@@ -52,6 +52,12 @@ apiClient.interceptors.request.use(
     config.headers.Accept = 'application/json';
     config.headers['Content-Type'] = 'application/json';
 
+    // Free ngrok interstitial — skip when calling users-service via ngrok
+    const base = String(config.baseURL || '');
+    if (base.includes('ngrok')) {
+      config.headers['ngrok-skip-browser-warning'] = '1';
+    }
+
     // Log request in development
     if (__DEV__) {
       const fullUrl = `${config.baseURL}${config.url}`;
@@ -111,16 +117,23 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (__DEV__) {
-      // Don't log 404s as errors for diary endpoints (expected when no entry exists)
-      const isDiary404 = error.config?.url?.includes('/diary') && error.response?.status === 404;
-      const isExpected404 = isDiary404 && (
-        error.response?.data?.error?.includes('Diary entry not found') ||
-        error.response?.data?.error?.includes('User not found')
-      );
-      
-      if (isExpected404) {
-        // Log as info, not error, since this is expected behavior
-        console.log('[API Info] Diary entry not found (404) - this is normal if no food has been added yet');
+      // Soft-expected 404s (no data yet) — log as info, not error
+      const status = error.response?.status;
+      const url = error.config?.url || '';
+      const errMsg = String(error.response?.data?.error || error.response?.data?.message || '');
+      const isDiary404 =
+        url.includes('/diary') &&
+        status === 404 &&
+        (errMsg.includes('Diary entry not found') || errMsg.includes('User not found'));
+      const isWorkoutTemplates404 =
+        status === 404 &&
+        url.includes('/workouts') &&
+        errMsg.toLowerCase().includes('no workout templates');
+
+      if (isDiary404) {
+        console.log('[API Info] Diary entry not found (404) - normal if no food logged yet');
+      } else if (isWorkoutTemplates404) {
+        console.log('[API Info] No workout templates on server — app will use local starter');
       } else {
         console.error('[API Error]', {
           url: error.config?.url,

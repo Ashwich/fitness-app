@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { colors, radii } from '../theme/opengym';
 
 export const PrimaryButton = ({ title, onPress, disabled, loading, icon }) => {
   const isDisabled = disabled || loading;
@@ -14,7 +15,7 @@ export const PrimaryButton = ({ title, onPress, disabled, loading, icon }) => {
       onPress={onPress}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color={colors.onAccent} />
       ) : (
         <>
           {icon}
@@ -27,10 +28,10 @@ export const PrimaryButton = ({ title, onPress, disabled, loading, icon }) => {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.accent,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    borderRadius: 12,
+    borderRadius: radii.md,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -40,13 +41,12 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pressed: {
-    opacity: 0.8,
+    backgroundColor: colors.accentPressed,
   },
   label: {
-    color: '#fff',
-    fontSize: 16,
+    color: colors.onAccent,
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
 });
-
-

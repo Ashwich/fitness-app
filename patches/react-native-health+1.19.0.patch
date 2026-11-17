@@ -1,0 +1,23 @@
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+index e8ddce1..e2cd05b 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+@@ -45,6 +45,7 @@ RCT_EXPORT_MODULE();
+ }
+ 
+ + (RCTCallableJSModules *)sharedJsModule {
++    // Kept for binary compatibility; unused on modern RN (no setBridge:).
+     static RCTCallableJSModules *sharedJsModule = nil;
+     static dispatch_once_t onceToken;
+     dispatch_once(&onceToken, ^{
+@@ -840,8 +841,8 @@ RCT_EXPORT_METHOD(getClinicalRecords:(NSDictionary *)input callback:(RCTResponse
+ 
+ - (void)emitEventInternal:(NSNotification *)notification {
+   if (self.hasListeners) {
+-    self.callableJSModules = [RCTAppleHealthKit sharedJsModule];
+-    [self.callableJSModules setBridge:self.bridge];
++    // RN 0.76+: RCTCallableJSModules no longer exposes setBridge:.
++    // RCTEventEmitter already has callableJSModules wired by the runtime.
+     [self sendEventWithName:notification.name
+                    body:notification.userInfo];
+   }

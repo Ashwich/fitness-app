@@ -108,8 +108,16 @@ export const BootstrapProvider = ({ children }) => {
       
       // Update user in AuthContext from bootstrap data (prevents duplicate meRequest call)
       if (data.user) {
-        console.log('[Bootstrap] Updating user in AuthContext from bootstrap data');
-        updateUser(data.user);
+        const nextId = data.user.id || data.user.userId;
+        if (nextId && nextId !== loadedUserIdRef.current) {
+          loadedUserIdRef.current = nextId;
+        }
+        // Only push into AuthContext when we have a stable id — avoid object churn loops
+        updateUser({
+          ...data.user,
+          id: nextId,
+          userId: nextId,
+        });
       }
       
       return data;
@@ -123,7 +131,7 @@ export const BootstrapProvider = ({ children }) => {
         setLoading(false);
       }
     }
-  }, [token, updateUser, bootstrapData]); // Removed user and bootstrapData from dependencies
+  }, [token, updateUser]); // do not depend on bootstrapData — that recreates this fn every load
 
   /**
    * Refresh bootstrap data (forces reload)

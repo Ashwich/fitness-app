@@ -16,7 +16,7 @@ export default function App() {
         <AuthProvider>
           <BootstrapProvider>
             <SocketProvider>
-              <StatusBar style="dark" />
+              <StatusBar style="light" />
               <AppNavigator />
             </SocketProvider>
           </BootstrapProvider>

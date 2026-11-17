@@ -1,15 +1,23 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { colors, radii } from '../theme/opengym';
 
-export const FormTextInput = forwardRef(({ label, error, style, ...rest }, ref) => {
-  return (
-    <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput ref={ref} style={[styles.input, error && styles.errorBorder, style]} {...rest} />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
-});
+export const FormTextInput = forwardRef(
+  ({ label, error, style, containerStyle, ...rest }, ref) => {
+    return (
+      <View style={[styles.wrapper, containerStyle]}>
+        {label ? <Text style={styles.label}>{label}</Text> : null}
+        <TextInput
+          ref={ref}
+          placeholderTextColor={colors.label3}
+          style={[styles.input, error && styles.errorBorder, style]}
+          {...rest}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </View>
+    );
+  }
+);
 
 FormTextInput.displayName = 'FormTextInput';
 
@@ -18,27 +26,29 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    marginBottom: 6,
-    color: '#111827',
+    marginBottom: 8,
+    color: colors.label3,
     fontWeight: '600',
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    backgroundColor: colors.surface2,
+    borderRadius: radii.md,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: '#fff',
+    color: colors.label,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   errorBorder: {
-    borderColor: '#dc2626',
+    borderColor: colors.red,
   },
   errorText: {
-    color: '#dc2626',
-    marginTop: 4,
+    color: colors.red,
+    marginTop: 6,
     fontSize: 12,
   },
 });
-
-

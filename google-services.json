@@ -1,0 +1,100 @@
+{
+  "project_info": {
+    "project_number": "732410775120",
+    "project_id": "fitsera-f6c2f",
+    "storage_bucket": "fitsera-f6c2f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732410775120:android:657d10c10996770546b355",
+        "android_client_info": {
+          "package_name": "com.fitsera.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "732410775120-2sireejrrevtfkipajmsbqehdu0j6rhn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fitsera.app",
+            "certificate_hash": "849c53110914a226d167f7f683143021ac03a9b0"
+          }
+        },
+        {
+          "client_id": "732410775120-1j5pp6sp4uh2ifrodu3s3o00ddurie2f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAncr3-vD9YxNnGnfBB0Ud6YmmceHblu9w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "732410775120-1j5pp6sp4uh2ifrodu3s3o00ddurie2f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "732410775120-300ov04tjiphubomuavdmr431vf960r4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fitsera.app",
+                "app_store_id": "6799401083"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732410775120:android:c56efaf2efc5e37d46b355",
+        "android_client_info": {
+          "package_name": "com.gymapp.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "732410775120-u2sgee57mjc5te4f2v2kvk7rbtcrfh6o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gymapp.mobile",
+            "certificate_hash": "a069902ef265807a587bc2328d1cab6c9486ffaf"
+          }
+        },
+        {
+          "client_id": "732410775120-1j5pp6sp4uh2ifrodu3s3o00ddurie2f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAncr3-vD9YxNnGnfBB0Ud6YmmceHblu9w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "732410775120-1j5pp6sp4uh2ifrodu3s3o00ddurie2f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "732410775120-300ov04tjiphubomuavdmr431vf960r4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fitsera.app",
+                "app_store_id": "6799401083"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
