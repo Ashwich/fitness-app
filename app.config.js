@@ -6,7 +6,7 @@ export default {
   expo: {
     name: 'Fitsera',
     slug: 'fitsera-app',
-    version: '1.0.1',
+    version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'dark',
