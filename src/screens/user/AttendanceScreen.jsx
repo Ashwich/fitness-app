@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { scanQrCode } from '../../api/services/attendanceService';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const { width, height } = Dimensions.get('window');
 
@@ -255,6 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 18,
     fontWeight: '700',
     color: colors.label,
@@ -282,6 +283,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   infoTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 20,
     fontWeight: '700',
     color: colors.label,
@@ -289,6 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
     textAlign: 'center',
@@ -305,6 +308,7 @@ const styles = StyleSheet.create({
   },
   cameraButtonText: {
     color: colors.onAccent,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -320,6 +324,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     marginHorizontal: 16,
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label3,
     fontWeight: '600',
@@ -328,6 +333,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.label,
@@ -337,6 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 16,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     borderWidth: 1,
     borderColor: colors.sep,
@@ -356,6 +363,7 @@ const styles = StyleSheet.create({
   },
   scanButtonText: {
     color: colors.onAccent,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -368,12 +376,14 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   resultTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.accent,
     marginBottom: 8,
   },
   resultText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.accent,
   },
@@ -387,6 +397,7 @@ const styles = StyleSheet.create({
   },
   helpText: {
     flex: 1,
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
     lineHeight: 20,
@@ -420,6 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   cameraTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 18,
     fontWeight: '700',
     color: colors.label,
@@ -468,6 +480,7 @@ const styles = StyleSheet.create({
   },
   scanHint: {
     marginTop: 24,
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label,
     textAlign: 'center',

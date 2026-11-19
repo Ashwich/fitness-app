@@ -187,3 +187,9 @@ export const linkPhone = async (phone) => {
   return extractData(response);
 };
 
+
+/** Permanently delete the signed-in account and all of its data. */
+export const deleteAccount = async () => {
+  const response = await apiClient.delete('/me');
+  return response.data?.data || response.data;
+};

@@ -15,7 +15,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { upsertProfile } from '../../api/services/profileService';
 import { getReadableError } from '../../utils/apiError';
 import { computeAutoGoals } from '../../utils/autoGoals';
-import { colors, radii, space, typography } from '../../theme/opengym';
+import { colors, radii, space, typography, FONT_FAMILY } from '../../theme/opengym';
 
 const CalorieGoalsScreen = ({ navigation, route }) => {
   const isEditMode = route.params?.isEditing || route.params?.editMode || false;
@@ -131,15 +131,8 @@ const CalorieGoalsScreen = ({ navigation, route }) => {
       carbs: parseInt(calorieGoals.carbs, 10),
       fat: parseInt(calorieGoals.fat, 10),
     };
-    if (isEditMode) {
-      handleSave(data);
-    } else {
-      navigation.navigate('ProfileSummaryScreen', {
-        ...route.params,
-        calorieGoals: data,
-        autoGoals,
-      });
-    }
+    // Only opened from Settings → Nutrition now; always save in place.
+    handleSave(data);
   };
 
   const totalMacroCals =
@@ -330,7 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.accentSoft,
   },
-  autoText: { color: colors.accent, fontWeight: '600', fontSize: 13 },
+  autoText: { color: colors.accent, fontWeight: '600', fontFamily: FONT_FAMILY, fontSize: 13 },
   content: { flex: 1 },
   scrollPad: { paddingHorizontal: space.pad, paddingBottom: 24 },
   title: { ...typography.largeTitle, marginTop: 8 },
@@ -342,7 +335,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 },
-  cardHeaderText: { fontSize: 15, fontWeight: '600', color: colors.label },
+  cardHeaderText: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '600', color: colors.label },
   macroRow: { flexDirection: 'row', gap: 10 },
   macroInputWrap: { flex: 1 },
   ratioBar: {
@@ -356,6 +349,7 @@ const styles = StyleSheet.create({
   ratioSeg: { height: '100%' },
   ratioLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   ratioLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 11,
     fontWeight: '600',
     color: colors.label3,
@@ -369,16 +363,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryOk: { backgroundColor: colors.accentSoft },
-  summaryWarn: { backgroundColor: 'rgba(255,159,10,0.16)' },
-  summaryTitle: { fontSize: 15, fontWeight: '600', color: colors.label },
-  summaryDetail: { fontSize: 13, color: colors.label2, marginTop: 2 },
+  summaryWarn: { backgroundColor: colors.orangeSoft },
+  summaryTitle: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '600', color: colors.label },
+  summaryDetail: { fontFamily: FONT_FAMILY, fontSize: 13, color: colors.label2, marginTop: 2 },
   fixBtn: {
     backgroundColor: colors.orange,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radii.sm,
   },
-  fixText: { color: colors.onAccent, fontWeight: '700', fontSize: 13 },
+  fixText: { color: colors.onAccent, fontWeight: '700', fontFamily: FONT_FAMILY, fontSize: 13 },
   footer: {
     padding: space.pad,
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,

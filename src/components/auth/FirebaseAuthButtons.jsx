@@ -18,7 +18,7 @@ import {
   formatFirebaseAuthError,
 } from '../../services/firebaseAuthService';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const GREEN = colors.accent;
 
@@ -133,10 +133,6 @@ export default function FirebaseAuthButtons() {
   if (mode === 'choose') {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.lead}>
-          Sign in with your phone or Google. After Google, you can optionally add
-          your gym phone number to sync membership.
-        </Text>
 
         <TouchableOpacity
           style={[styles.methodBtn, styles.phoneMethod]}
@@ -153,7 +149,7 @@ export default function FirebaseAuthButtons() {
               {useDevPhone ? 'Dev login in Expo Go' : 'OTP verification'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.6)" />
+          <Ionicons name="chevron-forward" size={20} color={colors.inkMuted} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -323,6 +319,7 @@ export default function FirebaseAuthButtons() {
 const styles = StyleSheet.create({
   wrap: { gap: 12, marginTop: 8 },
   lead: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     lineHeight: 20,
     color: colors.label2,
@@ -334,54 +331,56 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
-  backText: { fontSize: 14, color: colors.label2, fontWeight: '600' },
+  backText: { fontFamily: FONT_FAMILY, fontSize: 14, color: colors.label2, fontWeight: '600' },
   methodBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: 18,
   },
   phoneMethod: {
     backgroundColor: GREEN,
   },
   googleMethod: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.sep,
   },
   methodTextWrap: { flex: 1 },
   methodTitle: {
     color: colors.onAccent,
     fontWeight: '700',
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
   },
   methodSub: {
-    color: 'rgba(0,0,0,0.6)',
+    color: colors.inkMuted,
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     marginTop: 2,
   },
   googleTitle: { color: colors.label },
   googleSub: { color: colors.label2 },
   devBanner: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     lineHeight: 17,
     color: colors.orange,
     textAlign: 'center',
   },
   panel: {
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    backgroundColor: colors.accentSoft,
+    gap: 12,
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
   },
   label: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accent,
+    color: colors.label2,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -389,9 +388,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.sep,
     borderRadius: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surface2,
     paddingHorizontal: 12,
     paddingVertical: 14,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     color: colors.label,
   },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontFamily: FONT_FAMILY, fontSize: 15 },
   cancelBtn: {
     borderWidth: 1,
     borderColor: colors.sep,
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  cancelText: { color: colors.label2, fontWeight: '600', fontSize: 13 },
+  cancelText: { color: colors.label2, fontWeight: '600', fontFamily: FONT_FAMILY, fontSize: 13 },
   disabled: { opacity: 0.7 },
   errorBox: {
     flexDirection: 'row',
@@ -423,5 +423,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.redSoft,
   },
-  errorText: { flex: 1, fontSize: 13, color: colors.red },
+  errorText: { flex: 1, fontFamily: FONT_FAMILY, fontSize: 13, color: colors.red },
 });

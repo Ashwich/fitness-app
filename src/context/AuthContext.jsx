@@ -11,6 +11,8 @@ import { retryGymLink } from '../api/services/attendanceService';
 import { setAuthToken } from '../api/client';
 import { deleteToken, getToken, saveToken } from '../storage/tokenStorage';
 import { getReadableError } from '../utils/apiError';
+import { fetchProfile } from '../api/services/profileService';
+import { needsOnboarding as profileNeedsOnboarding } from '../utils/profileTargets';
 
 const AuthContext = createContext(undefined);
 
@@ -23,6 +25,21 @@ export const AuthProvider = ({ children }) => {
   const [needsGymChoice, setNeedsGymChoice] = useState(false);
   const [gymMatches, setGymMatches] = useState([]);
   const [needsPhoneLink, setNeedsPhoneLink] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  /** New users (no body stats / goal yet) go through the setup flow first. */
+  const checkOnboarding = useCallback(async () => {
+    try {
+      const profile = await fetchProfile();
+      const needs = profileNeedsOnboarding(profile);
+      setNeedsOnboarding(needs);
+      return needs;
+    } catch {
+      // Network trouble must not lock people out; Today still shows "Finish setting up".
+      setNeedsOnboarding(false);
+      return false;
+    }
+  }, []);
 
   const persistToken = useCallback(async (value) => {
     setToken(value);
@@ -51,6 +68,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error('No token received from login');
       }
 
+      // Decide on onboarding before the token flips the navigator to the app.
+      setAuthToken(nextToken);
+      await checkOnboarding();
       await persistToken(nextToken);
 
       if (response?.user) {
@@ -110,7 +130,7 @@ export const AuthProvider = ({ children }) => {
         gym: response?.gym || null,
       };
     },
-    [persistToken, normalizeUser],
+    [persistToken, normalizeUser, checkOnboarding],
   );
 
   const bootstrap = useCallback(async () => {
@@ -121,6 +141,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       await persistToken(storedToken);
+      await checkOnboarding();
       try {
         const meUser = await meRequest();
         const normalized = normalizeUser(meUser);
@@ -155,7 +176,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setInitializing(false);
     }
-  }, [persistToken, normalizeUser]);
+  }, [persistToken, normalizeUser, checkOnboarding]);
 
   const updateUser = useCallback((userData) => {
     setUser(normalizeUser(userData));
@@ -288,8 +309,13 @@ export const AuthProvider = ({ children }) => {
     setNeedsGymWait(false);
   }, []);
 
+  const completeOnboarding = useCallback(() => {
+    setNeedsOnboarding(false);
+  }, []);
+
   const logout = useCallback(async () => {
     setUser(null);
+    setNeedsOnboarding(false);
     setGymLinked(true);
     setNeedsGymWait(false);
     setNeedsGymChoice(false);
@@ -307,6 +333,8 @@ export const AuthProvider = ({ children }) => {
       needsGymWait,
       needsGymChoice,
       needsPhoneLink,
+      needsOnboarding,
+      completeOnboarding,
       gymMatches,
       login,
       loginWithFirebase,
@@ -342,6 +370,8 @@ export const AuthProvider = ({ children }) => {
       needsGymWait,
       needsGymChoice,
       needsPhoneLink,
+      needsOnboarding,
+      completeOnboarding,
       gymMatches,
     ],
   );

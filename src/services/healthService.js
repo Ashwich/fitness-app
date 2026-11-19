@@ -405,6 +405,12 @@ export const getWeeklySteps = async () => {
 export const setStepsGoal = async (goal) => {
   try {
     await AsyncStorage.setItem(STEPS_GOAL_KEY, goal.toString());
+    try {
+      const { upsertPreferences } = require('../api/services/profileService');
+      await upsertPreferences({ stepGoal: Math.round(Number(goal)) });
+    } catch {
+      /* offline: local value still applies */
+    }
   } catch (error) {
     console.error('Error setting steps goal:', error);
   }
@@ -479,3 +485,22 @@ export const getTodayCaloriesBurned = async (profile) => {
   }
 };
 
+
+/** { 'YYYY-MM-DD': steps } for the last `days` days, oldest first. */
+export const getStepsHistory = async (days = 30) => {
+  try {
+    const storedData = await AsyncStorage.getItem(STEPS_KEY);
+    const stepsData = storedData ? JSON.parse(storedData) : {};
+    const out = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = toLocalISODate(date);
+      out[key] = stepsData[key] || 0;
+    }
+    return out;
+  } catch (error) {
+    console.error('Error getting steps history:', error);
+    return {};
+  }
+};

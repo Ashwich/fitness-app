@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radii } from '../theme/opengym';
+import { colors, radii, FONT_FAMILY } from '../theme/opengym';
 
 export const PrimaryButton = ({ title, onPress, disabled, loading, icon }) => {
   const isDisabled = disabled || loading;
@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.onAccent,
+    fontFamily: FONT_FAMILY,
     fontSize: 17,
     fontWeight: '600',
     letterSpacing: -0.2,

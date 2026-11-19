@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { imgSrc, gifSrc, MEDIA_ATTRIBUTION } from '../../data/exercises';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const PURPLE = colors.accent;
 
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  hintText: { color: colors.label, fontSize: 11, fontWeight: '600' },
+  hintText: { color: colors.label, fontFamily: FONT_FAMILY, fontSize: 11, fontWeight: '600' },
   placeholder: {
     width: '100%',
     height: 160,
@@ -157,6 +157,7 @@ const styles = StyleSheet.create({
   },
   thumbImg: { backgroundColor: colors.surface2 },
   attr: {
+    fontFamily: FONT_FAMILY,
     fontSize: 10,
     color: colors.label3,
     textAlign: 'center',

@@ -28,7 +28,7 @@ import {
   getDiaryStats,
 } from '../../api/services/diaryService';
 import { getReadableError } from '../../utils/apiError';
-import { colors, radii, space } from '../../theme/opengym';
+import { colors, radii, space, FONT_FAMILY } from '../../theme/opengym';
 import CalorieRing from '../../components/nutrition/CalorieRing';
 import { toLocalISODate } from '../../utils/date';
 
@@ -36,10 +36,10 @@ const MEAL_TYPES = {
   breakfast: { label: 'Breakfast', icon: 'sunny-outline', color: colors.orange },
   brunch: { label: 'Brunch', icon: 'cafe-outline', color: colors.accent },
   dinner: { label: 'Dinner', icon: 'moon-outline', color: colors.blue },
-  snacks: { label: 'Snacks', icon: 'nutrition-outline', color: '#bf5af2' },
+  snacks: { label: 'Snacks', icon: 'nutrition-outline', color: colors.purple },
 };
 
-const NutritionDiaryScreen = ({ navigation }) => {
+const NutritionDiaryScreen = ({ navigation, route }) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [diaryEntry, setDiaryEntry] = useState(null);
@@ -61,6 +61,18 @@ const NutritionDiaryScreen = ({ navigation }) => {
     return toLocalISODate(today);
   };
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
+
+  // Opened from Eat with a meal to add to (e.g. "Add dinner").
+  const addMealParam = route?.params?.addMeal;
+  useEffect(() => {
+    if (addMealParam && MEAL_TYPES[addMealParam]) {
+      setSelectedMeal(addMealParam);
+      setSearchQuery('');
+      setSearchResults([]);
+      setShowFoodModal(true);
+      navigation.setParams?.({ addMeal: undefined });
+    }
+  }, [addMealParam, navigation]);
 
   // Helper function to process diary entry (parse JSON strings, ensure arrays, etc.)
   const processDiaryEntry = useCallback((entry) => {
@@ -789,7 +801,7 @@ const NutritionDiaryScreen = ({ navigation }) => {
               {
                 key: 'fat',
                 label: 'Fats',
-                color: '#bf5af2',
+                color: colors.purple,
                 value: dailyTotal.fat || 0,
                 goal: goals.fat || 60,
               },
@@ -1071,6 +1083,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.label2,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
   },
   header: {
@@ -1092,6 +1105,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 18,
     fontWeight: '600',
     color: colors.label,
@@ -1108,6 +1122,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerDate: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '500',
     color: colors.label2,
@@ -1147,8 +1162,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  macroName: { fontSize: 12, fontWeight: '600', color: colors.label2 },
-  macroVals: { fontSize: 11, color: colors.label3, fontWeight: '500' },
+  macroName: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600', color: colors.label2 },
+  macroVals: { fontFamily: FONT_FAMILY, fontSize: 11, color: colors.label3, fontWeight: '500' },
   macroTrack: {
     height: 7,
     borderRadius: 4,
@@ -1169,6 +1184,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.onAccent,
     fontWeight: '700',
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
   },
   mealTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -1187,6 +1203,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   dateText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label,
@@ -1198,6 +1215,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
   },
   statsTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label,
@@ -1211,11 +1229,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
+    fontFamily: FONT_FAMILY,
     fontSize: 24,
     fontWeight: '700',
     color: colors.accent,
   },
   statLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
     marginTop: 4,
@@ -1250,12 +1270,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   circularProgressValue: {
+    fontFamily: FONT_FAMILY,
     fontSize: 34,
     fontWeight: '700',
     color: colors.label,
     letterSpacing: -0.5,
   },
   circularProgressLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 13,
     color: colors.label3,
     marginTop: 4,
@@ -1279,16 +1301,19 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   macroBoxLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     color: colors.label3,
     marginBottom: 4,
   },
   macroBoxPercentage: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '700',
     color: colors.label,
   },
   progressTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label,
@@ -1301,11 +1326,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   progressLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
     marginBottom: 4,
   },
   progressValue: {
+    fontFamily: FONT_FAMILY,
     fontSize: 18,
     fontWeight: '700',
     color: colors.label,
@@ -1323,6 +1350,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressPercentage: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     color: colors.label3,
   },
@@ -1336,17 +1364,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   macroLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     color: colors.label3,
     marginBottom: 4,
   },
   macroValue: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.label,
     marginBottom: 4,
   },
   macroPercentage: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     color: colors.accent,
   },
@@ -1360,6 +1391,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   mealTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 17,
     fontWeight: '600',
     color: colors.label,
@@ -1375,6 +1407,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSoft,
   },
   addMealButtonText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.accent,
@@ -1412,12 +1445,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   foodItemName: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label,
     marginBottom: 4,
   },
   foodItemCalories: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
   },
@@ -1427,6 +1462,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.sep,
   },
   foodDetailText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 13,
     color: colors.label2,
     marginBottom: 4,
@@ -1442,6 +1478,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyMealText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 13,
     color: colors.label3,
     textAlign: 'center',
@@ -1459,6 +1496,7 @@ const styles = StyleSheet.create({
   },
   setGoalsText: {
     flex: 1,
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
     fontWeight: '500',
@@ -1469,7 +1507,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: colors.overlay,
   },
   modalContent: {
     backgroundColor: colors.surface,
@@ -1486,6 +1524,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 18,
     fontWeight: '600',
     color: colors.label,
@@ -1496,6 +1535,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     borderRadius: radii.md,
     padding: 16,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     color: colors.label,
     marginBottom: 16,
@@ -1509,6 +1549,7 @@ const styles = StyleSheet.create({
   },
   searchingText: {
     color: colors.label2,
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
   },
   searchResultsList: {
@@ -1526,12 +1567,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchResultName: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label,
     marginBottom: 4,
   },
   searchResultNutrition: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
   },
@@ -1543,18 +1586,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   noResultsText: {
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
     color: colors.label2,
     marginBottom: 8,
   },
   noResultsSubtext: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label3,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   amountLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.label,
@@ -1564,6 +1610,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     borderRadius: radii.md,
     padding: 16,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     color: colors.label,
     marginBottom: 20,
@@ -1579,6 +1626,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: colors.onAccent,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1589,6 +1637,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   nutritionPreviewTitle: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.label,
@@ -1600,10 +1649,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   nutritionPreviewLabel: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     color: colors.label2,
   },
   nutritionPreviewValue: {
+    fontFamily: FONT_FAMILY,
     fontSize: 14,
     fontWeight: '600',
     color: colors.label,

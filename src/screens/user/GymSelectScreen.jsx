@@ -12,7 +12,7 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { selectGym, getGymMatches } from '../../api/services/attendanceService';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const PURPLE = colors.accent;
 
@@ -138,8 +138,8 @@ const GymSelectScreen = () => {
 
 const styles = StyleSheet.create({
   content: { padding: 24, paddingTop: 56, gap: 12, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.label },
-  subtitle: { fontSize: 15, lineHeight: 22, color: colors.label2, marginBottom: 8 },
+  title: { fontFamily: FONT_FAMILY, fontSize: 26, fontWeight: '800', color: colors.label },
+  subtitle: { fontFamily: FONT_FAMILY, fontSize: 15, lineHeight: 22, color: colors.label2, marginBottom: 8 },
   empty: { color: colors.label3, marginTop: 12 },
   card: {
     flexDirection: 'row',
@@ -160,9 +160,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardBody: { flex: 1, minWidth: 0 },
-  gymName: { fontSize: 16, fontWeight: '800', color: colors.label },
-  memberName: { fontSize: 13, color: colors.label2, marginTop: 2 },
-  error: { color: colors.red, fontSize: 13, marginTop: 4 },
+  gymName: { fontFamily: FONT_FAMILY, fontSize: 16, fontWeight: '800', color: colors.label },
+  memberName: { fontFamily: FONT_FAMILY, fontSize: 13, color: colors.label2, marginTop: 2 },
+  error: { color: colors.red, fontFamily: FONT_FAMILY, fontSize: 13, marginTop: 4 },
   secondary: {
     marginTop: 8,
     paddingVertical: 12,

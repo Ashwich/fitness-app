@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 /**
  * Calorie ring UI — pure RN Views (avoids broken react-native-svg on Expo Go).
@@ -78,17 +78,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   value: {
+    fontFamily: FONT_FAMILY,
     fontSize: 22,
     fontWeight: '700',
     color: colors.label,
     letterSpacing: -0.4,
   },
   of: {
+    fontFamily: FONT_FAMILY,
     fontSize: 11,
     color: colors.label3,
     marginTop: 1,
   },
   unit: {
+    fontFamily: FONT_FAMILY,
     fontSize: 11,
     color: colors.label3,
     fontWeight: '500',

@@ -1,45 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { ScreenContainer } from '../../components/ScreenContainer';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import FirebaseAuthButtons from '../../components/auth/FirebaseAuthButtons';
-import { colors } from '../../theme/opengym';
+import { Heading, Screen, TopBar } from '../../components/ui';
 
-const LoginScreen = () => {
+export default function LoginScreen({ navigation }) {
   return (
-    <ScreenContainer>
-      <View style={styles.header}>
-        <Text style={styles.title}>Sign in</Text>
-        <Text style={styles.subtitle}>
-          Continue with phone or Google. After Google, you can add your gym phone
-          to sync membership — or skip.
-        </Text>
-      </View>
-
-      <View style={styles.authPrimary}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Screen header={<TopBar onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined} />}>
+        <Heading
+          title="Sign in"
+          subtitle="Use your phone number or Google. If your gym uses Fitsera, use the number they have on file to sync your membership."
+        />
         <FirebaseAuthButtons />
-      </View>
-    </ScreenContainer>
+      </Screen>
+    </KeyboardAvoidingView>
   );
-};
-
-const styles = StyleSheet.create({
-  header: {
-    gap: 8,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.label,
-  },
-  subtitle: {
-    color: colors.label2,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  authPrimary: {
-    paddingHorizontal: 20,
-  },
-});
-
-export default LoginScreen;
+}

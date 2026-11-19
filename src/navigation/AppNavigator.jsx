@@ -1,220 +1,161 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AppLoader } from '../components/AppLoader';
+import { Icon } from '../components/ui/Icon';
+import { useAuth } from '../context/AuthContext';
+import { colors, FONT_FAMILY } from '../theme/opengym';
+
+import HomepageScreen from '../screens/landing/HomepageScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import LinkPhoneScreen from '../screens/auth/LinkPhoneScreen';
-import UserProfileScreen from '../screens/user/UserProfileScreen';
-import HomepageScreen from '../screens/landing/HomepageScreen';
-import UserDashboardScreen from '../screens/user/UserDashboardScreen';
-import PersonalInfoScreen from '../screens/user/PersonalInfoScreen';
-import PhysicalInfoScreen from '../screens/user/PhysicalInfoScreen';
-import FitnessGoalsScreen from '../screens/user/FitnessGoalsScreen';
-import CalorieGoalsScreen from '../screens/user/CalorieGoalsScreen';
-import ProfileSummaryScreen from '../screens/user/ProfileSummaryScreen';
-import WaterIntakeScreen from '../screens/user/WaterIntakeScreen';
-import StepsGoalScreen from '../screens/user/StepsGoalScreen';
-import ProfileSettingsScreen from '../screens/user/ProfileSettingsScreen';
-import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
-import AttendanceScreen from '../screens/user/AttendanceScreen';
-import WaitingForGymScreen from '../screens/user/WaitingForGymScreen';
-import GymWaitScreen from '../screens/user/GymWaitScreen';
-import GymHomeScreen from '../screens/user/GymHomeScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import GymSelectScreen from '../screens/user/GymSelectScreen';
+import WaitingForGymScreen from '../screens/user/WaitingForGymScreen';
+
+import TodayScreen from '../screens/main/TodayScreen';
+import TrainScreen from '../screens/main/TrainScreen';
+import EatScreen from '../screens/main/EatScreen';
+import ProfileScreen from '../screens/main/ProfileScreen';
+import ActivityScreen from '../screens/main/ActivityScreen';
+import HydrationScreen from '../screens/main/HydrationScreen';
+import SettingsScreen from '../screens/main/SettingsScreen';
+import SetupEditScreen from '../screens/main/SetupEditScreen';
+import GymHomeScreen from '../screens/user/GymHomeScreen';
+import GymWaitScreen from '../screens/user/GymWaitScreen';
+import NutritionDiaryScreen from '../screens/user/NutritionDiaryScreen';
 import DietPlansScreen from '../screens/user/DietPlansScreen';
-import WorkoutPlanScreen from '../screens/user/WorkoutPlanScreen';
+import CalorieGoalsScreen from '../screens/user/CalorieGoalsScreen';
+import AttendanceScreen from '../screens/user/AttendanceScreen';
 import PeriodTrackingScreen from '../screens/user/PeriodTrackingScreen';
-import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme/opengym';
 
 const navTheme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
-    primary: colors.accent,
+    ...DefaultTheme.colors,
+    primary: colors.ink,
     background: colors.bg,
-    card: colors.bgEl,
+    card: colors.surface,
     text: colors.label,
-    border: colors.sep,
+    border: colors.border,
     notification: colors.red,
   },
 };
 
+const stackOptions = {
+  headerShown: false,
+  contentStyle: { backgroundColor: colors.bg },
+};
+
 const AuthStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
-const AppTabs = createBottomTabNavigator();
-const HomeStack = createNativeStackNavigator();
-const DietStack = createNativeStackNavigator();
-const WorkoutStack = createNativeStackNavigator();
-const GymStack = createNativeStackNavigator();
-const ProfileStack = createNativeStackNavigator();
+const Tabs = createBottomTabNavigator();
 
 const AuthNavigator = () => (
-  <AuthStack.Navigator
-    screenOptions={{
-      headerShadowVisible: false,
-      headerTitleAlign: 'center',
-      headerStyle: { backgroundColor: colors.bg },
-      headerTintColor: colors.label,
-      contentStyle: { backgroundColor: colors.bg },
-    }}
-  >
-    <AuthStack.Screen name="Homepage" component={HomepageScreen} options={{ headerShown: false }} />
-    <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Sign in' }} />
+  <AuthStack.Navigator screenOptions={stackOptions}>
+    <AuthStack.Screen name="Homepage" component={HomepageScreen} />
+    <AuthStack.Screen name="Login" component={LoginScreen} />
   </AuthStack.Navigator>
 );
 
-const HomeStackNavigator = () => (
-  <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-    <HomeStack.Screen name="UserDashboard" component={UserDashboardScreen} />
-    <HomeStack.Screen name="PersonalInfoScreen" component={PersonalInfoScreen} />
-    <HomeStack.Screen name="PhysicalInfoScreen" component={PhysicalInfoScreen} />
-    <HomeStack.Screen name="FitnessGoalsScreen" component={FitnessGoalsScreen} />
-    <HomeStack.Screen name="CalorieGoalsScreen" component={CalorieGoalsScreen} />
-    <HomeStack.Screen name="ProfileSummaryScreen" component={ProfileSummaryScreen} />
-    <HomeStack.Screen name="WaterIntakeScreen" component={WaterIntakeScreen} />
-    <HomeStack.Screen name="StepsGoalScreen" component={StepsGoalScreen} />
-    <HomeStack.Screen name="ProfileSettingsScreen" component={ProfileSettingsScreen} />
-    <HomeStack.Screen name="NutritionDiaryScreen" component={NutritionDiaryScreen} />
-    <HomeStack.Screen name="AttendanceScreen" component={AttendanceScreen} />
-    <HomeStack.Screen name="UserProfileScreen" component={UserProfileScreen} />
-    <HomeStack.Screen name="WaitingForGymScreen" component={WaitingForGymScreen} />
-    <HomeStack.Screen name="PeriodTrackingScreen" component={PeriodTrackingScreen} />
-  </HomeStack.Navigator>
-);
-
-const DietStackNavigator = () => (
-  <DietStack.Navigator screenOptions={{ headerShown: false }}>
-    <DietStack.Screen name="DietPlans" component={DietPlansScreen} />
-    <DietStack.Screen name="NutritionDiaryScreen" component={NutritionDiaryScreen} />
-  </DietStack.Navigator>
-);
-
-const WorkoutStackNavigator = () => (
-  <WorkoutStack.Navigator screenOptions={{ headerShown: false }}>
-    <WorkoutStack.Screen name="WorkoutPlan" component={WorkoutPlanScreen} />
-  </WorkoutStack.Navigator>
-);
-
-const GymEntryScreen = (props) => {
+const GymTab = (props) => {
   const { gymLinked } = useAuth();
   return gymLinked ? <GymHomeScreen {...props} /> : <GymWaitScreen {...props} />;
 };
 
-const GymStackNavigator = () => (
-  <GymStack.Navigator screenOptions={{ headerShown: false }}>
-    <GymStack.Screen name="GymHome" component={GymEntryScreen} />
-    <GymStack.Screen name="AttendanceScreen" component={AttendanceScreen} />
-    <GymStack.Screen name="GymWaitScreen" component={GymWaitScreen} />
-  </GymStack.Navigator>
-);
+const TAB_ICONS = { Today: 'home', Train: 'train', Eat: 'eat', Gym: 'gym', Profile: 'profile' };
 
-const ProfileStackNavigator = () => (
-  <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-    <ProfileStack.Screen name="UserProfileScreen" component={UserProfileScreen} />
-    <ProfileStack.Screen name="ProfileSettingsScreen" component={ProfileSettingsScreen} />
-    <ProfileStack.Screen name="PersonalInfoScreen" component={PersonalInfoScreen} />
-    <ProfileStack.Screen name="PhysicalInfoScreen" component={PhysicalInfoScreen} />
-    <ProfileStack.Screen name="FitnessGoalsScreen" component={FitnessGoalsScreen} />
-    <ProfileStack.Screen name="CalorieGoalsScreen" component={CalorieGoalsScreen} />
-    <ProfileStack.Screen name="PeriodTrackingScreen" component={PeriodTrackingScreen} />
-    <ProfileStack.Screen name="StepsGoalScreen" component={StepsGoalScreen} />
-    <ProfileStack.Screen name="WaterIntakeScreen" component={WaterIntakeScreen} />
-  </ProfileStack.Navigator>
-);
-
-const AppTabNavigator = () => (
-  <AppTabs.Navigator
+const MainTabs = () => (
+  <Tabs.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarActiveTintColor: colors.accent,
+      tabBarActiveTintColor: colors.label,
       tabBarInactiveTintColor: colors.label3,
-      tabBarStyle: {
-        paddingBottom: 8,
-        paddingTop: 8,
-        height: 64,
-        backgroundColor: 'rgba(14,14,16,0.96)',
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(84,84,88,0.34)',
-      },
-      tabBarLabelStyle: {
-        fontSize: 10,
-        fontWeight: '500',
-        letterSpacing: 0.05,
-      },
-      tabBarIcon: ({ color, size, focused }) => {
-        let iconName = 'home-outline';
-        if (route.name === 'Home') {
-          iconName = focused ? 'home' : 'home-outline';
-        } else if (route.name === 'Diet') {
-          iconName = focused ? 'nutrition' : 'nutrition-outline';
-        } else if (route.name === 'Workout') {
-          iconName = focused ? 'barbell' : 'barbell-outline';
-        } else if (route.name === 'Gym') {
-          iconName = focused ? 'fitness' : 'fitness-outline';
-        } else if (route.name === 'Profile') {
-          iconName = focused ? 'person' : 'person-outline';
-        }
-        return <Ionicons name={iconName} size={size} color={color} />;
-      },
+      tabBarStyle: styles.tabBar,
+      tabBarLabelStyle: styles.tabLabel,
+      tabBarIcon: ({ color }) => <Icon name={TAB_ICONS[route.name]} size={22} color={color} />,
+      sceneStyle: { backgroundColor: colors.bg },
     })}
   >
-    <AppTabs.Screen name="Home" component={HomeStackNavigator} options={{ title: 'Home' }} />
-    <AppTabs.Screen name="Diet" component={DietStackNavigator} options={{ title: 'Diet' }} />
-    <AppTabs.Screen name="Workout" component={WorkoutStackNavigator} options={{ title: 'Workout' }} />
-    <AppTabs.Screen name="Gym" component={GymStackNavigator} options={{ title: 'Gym' }} />
-    <AppTabs.Screen name="Profile" component={ProfileStackNavigator} options={{ title: 'Profile' }} />
-  </AppTabs.Navigator>
+    <Tabs.Screen name="Today" component={TodayScreen} />
+    <Tabs.Screen name="Train" component={TrainScreen} />
+    <Tabs.Screen name="Eat" component={EatScreen} />
+    <Tabs.Screen name="Gym" component={GymTab} />
+    <Tabs.Screen name="Profile" component={ProfileScreen} />
+  </Tabs.Navigator>
 );
 
 const AuthenticatedNavigator = () => {
-  const { needsGymWait, needsGymChoice, needsPhoneLink } = useAuth();
+  const { needsGymWait, needsGymChoice, needsPhoneLink, needsOnboarding } = useAuth();
 
   if (needsPhoneLink) {
     return (
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={stackOptions}>
         <RootStack.Screen name="LinkPhone" component={LinkPhoneScreen} />
       </RootStack.Navigator>
     );
   }
-
   if (needsGymChoice) {
     return (
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={stackOptions}>
         <RootStack.Screen name="GymSelect" component={GymSelectScreen} />
       </RootStack.Navigator>
     );
   }
-
+  if (needsOnboarding) {
+    return (
+      <RootStack.Navigator screenOptions={stackOptions}>
+        <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+      </RootStack.Navigator>
+    );
+  }
   if (needsGymWait) {
     return (
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={stackOptions}>
         <RootStack.Screen name="WaitingForGym" component={WaitingForGymScreen} />
       </RootStack.Navigator>
     );
   }
 
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="MainTabs" component={AppTabNavigator} />
+    <RootStack.Navigator screenOptions={stackOptions}>
+      <RootStack.Screen name="MainTabs" component={MainTabs} />
+      <RootStack.Screen name="Activity" component={ActivityScreen} />
+      <RootStack.Screen name="Hydration" component={HydrationScreen} options={{ presentation: 'modal' }} />
+      <RootStack.Screen name="Settings" component={SettingsScreen} />
+      <RootStack.Screen name="PersonalDetails" component={SetupEditScreen} initialParams={{ kind: 'about' }} />
+      <RootStack.Screen name="BodyEdit" component={SetupEditScreen} initialParams={{ kind: 'body' }} />
+      <RootStack.Screen name="PlanEdit" component={SetupEditScreen} initialParams={{ kind: 'plan' }} />
+      <RootStack.Screen name="CalorieGoalsScreen" component={CalorieGoalsScreen} />
+      <RootStack.Screen name="NutritionDiaryScreen" component={NutritionDiaryScreen} />
+      <RootStack.Screen name="DietPlans" component={DietPlansScreen} />
+      <RootStack.Screen name="AttendanceScreen" component={AttendanceScreen} />
+      <RootStack.Screen name="PeriodTrackingScreen" component={PeriodTrackingScreen} />
     </RootStack.Navigator>
   );
 };
 
 export const AppNavigator = () => {
   const { token, initializing } = useAuth();
-
-  if (initializing) {
-    return <AppLoader />;
-  }
-
+  if (initializing) return <AppLoader />;
   return (
     <NavigationContainer theme={navTheme}>
       {token ? <AuthenticatedNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 8,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabLabel: { fontFamily: FONT_FAMILY, fontSize: 11, fontWeight: '600', marginTop: 2 },
+});
 
 export default AppNavigator;

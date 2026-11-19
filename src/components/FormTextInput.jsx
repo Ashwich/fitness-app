@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, radii } from '../theme/opengym';
+import { colors, radii, FONT_FAMILY } from '../theme/opengym';
 
 export const FormTextInput = forwardRef(
   ({ label, error, style, containerStyle, ...rest }, ref) => {
@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: colors.label3,
     fontWeight: '600',
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -38,6 +39,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: 14,
     paddingVertical: 14,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     color: colors.label,
     borderWidth: 1,
@@ -49,6 +51,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.red,
     marginTop: 6,
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
   },
 });

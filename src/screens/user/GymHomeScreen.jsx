@@ -1,359 +1,204 @@
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Image,
-  RefreshControl,
-  Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useState } from 'react';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/ScreenContainer';
-import { useAuth } from '../../context/AuthContext';
 import {
-  getMyAttendance,
-  getAttendanceStreaks,
-} from '../../api/services/attendanceService';
-import { getReadableError } from '../../utils/apiError';
-import { colors, radii, space, typography } from '../../theme/opengym';
+  Icon,
+  ListCard,
+  ListRow,
+  Loading,
+  PageTitle,
+  RoundButton,
+  Screen,
+  Section,
+  StatTile,
+  Txt,
+} from '../../components/ui';
+import { colors, radii, FONT_FAMILY } from '../../theme/opengym';
+import { useAuth } from '../../context/AuthContext';
+import { getAttendanceStreaks, getMyAttendance } from '../../api/services/attendanceService';
 
-const GymHomeScreen = ({ navigation }) => {
+const listOf = (raw, keys) => {
+  if (Array.isArray(raw)) return raw;
+  for (const k of keys) if (Array.isArray(raw?.[k])) return raw[k];
+  return [];
+};
+const nameOf = (r) => r?.name || r?.fullName || r?.memberName || r?.username || 'Member';
+const streakOf = (r) => r?.streak ?? r?.currentStreak ?? r?.days ?? 0;
+const whenOf = (i) => i?.checkInAt || i?.checkedInAt || i?.date || i?.createdAt || i?.timestamp;
+
+/** Gym tab for linked members: check in, streak, member leaderboard, history. */
+export default function GymHomeScreen({ navigation }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState([]);
+  const [total, setTotal] = useState(0);
   const [streaks, setStreaks] = useState([]);
-  const [myStreak, setMyStreak] = useState(null);
+  const [mine, setMine] = useState(0);
+  const [gymName, setGymName] = useState(null);
 
   const load = useCallback(async () => {
-    try {
-      const [attendanceRaw, streaksRaw] = await Promise.all([
-        getMyAttendance().catch(() => null),
-        getAttendanceStreaks(20).catch(() => null),
-      ]);
-
-      const attendanceList = Array.isArray(attendanceRaw)
-        ? attendanceRaw
-        : attendanceRaw?.history ||
-          attendanceRaw?.records ||
-          attendanceRaw?.attendance ||
-          attendanceRaw?.items ||
-          [];
-      setHistory(Array.isArray(attendanceList) ? attendanceList.slice(0, 10) : []);
-
-      const streakList = Array.isArray(streaksRaw)
-        ? streaksRaw
-        : streaksRaw?.leaderboard || streaksRaw?.streaks || streaksRaw?.items || [];
-      const list = Array.isArray(streakList) ? streakList : [];
-      setStreaks(list);
-
-      const mineFromList =
-        list.find(
-          (row) =>
-            row.userId === user?.id ||
-            row.memberUserId === user?.id ||
-            row.isMe ||
-            row.me
-        ) || null;
-
-      if (mineFromList) {
-        setMyStreak(mineFromList);
-      } else if (attendanceRaw && typeof attendanceRaw === 'object' && !Array.isArray(attendanceRaw)) {
-        setMyStreak({
-          currentStreak: attendanceRaw.currentStreak ?? 0,
-          days: attendanceRaw.daysPresent ?? attendanceList.length,
-        });
-      } else {
-        setMyStreak(null);
-      }
-    } catch (error) {
-      Alert.alert('Error', getReadableError(error));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    const [att, st] = await Promise.all([
+      getMyAttendance().catch(() => null),
+      getAttendanceStreaks(20).catch(() => null),
+    ]);
+    const list = listOf(att, ['history', 'records', 'attendance', 'items']);
+    setHistory(list.slice(0, 8));
+    setTotal(att?.daysPresent ?? att?.total ?? list.length);
+    setGymName(att?.gym?.name || att?.gymName || null);
+    const board = listOf(st, ['leaderboard', 'streaks', 'items']);
+    setStreaks(board);
+    const me = board.find((r) => r.userId === user?.id || r.memberUserId === user?.id || r.isMe || r.me);
+    setMine(me ? streakOf(me) : att?.currentStreak ?? 0);
+    setLoading(false);
   }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
-
-  const myDays = myStreak?.streak ?? myStreak?.currentStreak ?? myStreak?.days ?? history.length;
 
   if (loading) {
     return (
-      <ScreenContainer>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      </ScreenContainer>
+      <Screen scroll={false}>
+        <Loading />
+      </Screen>
     );
   }
 
   return (
-    <ScreenContainer noPadding>
-      <View style={styles.hdr}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.largeTitle}>Gym</Text>
-          <Text style={styles.sub}>Show up. Be consistent.</Text>
+    <Screen
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
+    >
+      <PageTitle
+        eyebrow={gymName || 'Your gym'}
+        title="Gym"
+        action={<RoundButton icon="qr" label="Check in" onPress={() => navigation.navigate('AttendanceScreen')} />}
+      />
+
+      <Pressable
+        onPress={() => navigation.navigate('AttendanceScreen')}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.checkin, pressed && { opacity: 0.9 }]}
+      >
+        <View style={styles.checkinIcon}>
+          <Icon name="qr" size={22} color={colors.onLime} />
         </View>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => navigation.navigate('AttendanceScreen')}
-        >
-          <Ionicons name="qr-code-outline" size={20} color={colors.label} />
-        </TouchableOpacity>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt style={styles.checkinTitle}>Check in</Txt>
+          <Txt style={styles.checkinSub}>Scan the QR code at your gym</Txt>
+        </View>
+        <Icon name="chevron" size={20} color={colors.onInk} strokeWidth={2} />
+      </Pressable>
+
+      <View style={styles.tiles}>
+        <StatTile tone="lime" label="Streak" value={mine} unit={mine === 1 ? 'day' : 'days'} size={22} />
+        <StatTile label="Visits" value={total} size={22} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-            }}
-            tintColor={colors.accent}
-          />
-        }
-      >
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('AttendanceScreen')}
-        >
-          <LinearGradient
-            colors={['#34c759', '#248a3d']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.qrCard}
-          >
-            <View style={styles.qrIcon}>
-              <Ionicons name="qr-code" size={26} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.qrTitle}>Mark attendance</Text>
-              <Text style={styles.qrSub}>Scan your gym QR code</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <View style={styles.streakHero}>
-          <Text style={styles.streakLabel}>Your streak</Text>
-          <View style={styles.streakRow}>
-            <Text style={styles.streakValue}>{myDays ?? 0}</Text>
-            <Ionicons name="flame" size={36} color={colors.orange} style={{ marginLeft: 8 }} />
-          </View>
-          <Text style={styles.streakUnit}>days · keep showing up</Text>
-        </View>
-
-        <View style={styles.sectHead}>
-          <Text style={styles.sectTitle}>Member streaks</Text>
-          <Text style={styles.viewAll}>View all</Text>
-        </View>
-
+      <Section title="Member streaks">
         {streaks.length === 0 ? (
-          <Text style={styles.emptyText}>No streak data yet. Check in to start climbing.</Text>
+          <ListCard>
+            <ListRow title="No streaks yet" subtitle="Check in to start climbing" last />
+          </ListCard>
         ) : (
-          <>
-            {(() => {
-              const top = streaks[0];
-              const topName =
-                top?.name || top?.fullName || top?.memberName || top?.username || 'Member';
-              const topStreak = top?.streak ?? top?.currentStreak ?? top?.days ?? 0;
+          <ListCard>
+            {streaks.slice(0, 10).map((r, i) => {
+              const avatar = r.avatarUrl || r.avatar || r.photoUrl;
+              const me = r.userId === user?.id || r.memberUserId === user?.id || r.isMe || r.me;
               return (
-                <View style={styles.longestCard}>
-                  <Ionicons name="trophy" size={22} color={colors.orange} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.longestLabel}>Longest streak</Text>
-                    <Text style={styles.longestName} numberOfLines={1}>
-                      {topName} · {topStreak} days
-                    </Text>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {streaks.map((row, index) => {
-              const name = row.name || row.fullName || row.memberName || row.username || 'Member';
-              const avatar = row.avatarUrl || row.avatar || row.photoUrl;
-              const streak = row.streak ?? row.currentStreak ?? row.days ?? 0;
-              return (
-                <View
-                  key={row.memberId || row.userId || `${name}-${index}`}
-                  style={styles.leaderRow}
-                >
-                  <Text style={styles.rank}>{index + 1}</Text>
-                  {avatar ? (
-                    <Image source={{ uri: avatar }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={16} color={colors.accent} />
+                <ListRow
+                  key={r.memberId || r.userId || `${nameOf(r)}-${i}`}
+                  title={me ? `${nameOf(r)} (you)` : nameOf(r)}
+                  last={i === Math.min(streaks.length, 10) - 1}
+                  left={
+                    <View style={styles.rankWrap}>
+                      <Txt style={styles.rank}>{i + 1}</Txt>
+                      {avatar ? (
+                        <Image source={{ uri: avatar }} style={styles.avatar} />
+                      ) : (
+                        <View style={[styles.avatar, styles.avatarEmpty]}>
+                          <Txt style={styles.initial}>{nameOf(r).charAt(0).toUpperCase()}</Txt>
+                        </View>
+                      )}
                     </View>
-                  )}
-                  <Text style={styles.leaderName} numberOfLines={1}>
-                    {name}
-                  </Text>
-                  <View style={styles.streakChip}>
-                    <Ionicons name="flame" size={14} color={colors.orange} />
-                    <Text style={styles.streakChipText}>{streak}</Text>
-                  </View>
-                </View>
+                  }
+                  right={
+                    <View style={styles.streakChip}>
+                      <Icon name="flame" size={14} />
+                      <Txt style={styles.streakText}>{streakOf(r)}</Txt>
+                    </View>
+                  }
+                />
               );
             })}
-          </>
+          </ListCard>
         )}
+      </Section>
 
-        <Text style={[styles.sectTitle, { marginTop: 12 }]}>Recent check-ins</Text>
-        {history.length === 0 ? (
-          <Text style={styles.emptyText}>No attendance recorded yet.</Text>
-        ) : (
-          history.map((item, index) => {
-            const when =
-              item.checkInAt || item.checkedInAt || item.date || item.createdAt || item.timestamp;
-            const label = when ? new Date(when).toLocaleString() : `Visit ${index + 1}`;
-            return (
-              <View key={item.id || label} style={styles.historyRow}>
-                <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
-                <Text style={styles.historyText}>{label}</Text>
-              </View>
-            );
-          })
-        )}
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </ScreenContainer>
+      <Section title="Recent check-ins">
+        <ListCard>
+          {history.length === 0 ? (
+            <ListRow title="No check-ins yet" subtitle="Your visits will show up here" last />
+          ) : (
+            history.map((h, i) => {
+              const d = whenOf(h) ? new Date(whenOf(h)) : null;
+              return (
+                <ListRow
+                  key={h.id || i}
+                  left={<Icon name="check" size={18} strokeWidth={2} />}
+                  title={d ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : `Visit ${i + 1}`}
+                  value={d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null}
+                  last={i === history.length - 1}
+                />
+              );
+            })
+          )}
+        </ListCard>
+      </Section>
+    </Screen>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
-  hdr: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: space.pad,
-    paddingTop: Platform.OS === 'ios' ? 52 : 44,
-    marginBottom: 4,
-  },
-  largeTitle: { ...typography.largeTitle },
-  sub: { ...typography.sub, marginTop: 4 },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: { paddingHorizontal: space.pad, gap: 12, paddingBottom: 24 },
-  qrCard: {
+  checkin: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderRadius: 20,
     padding: 18,
+    borderRadius: radii.card,
+    backgroundColor: colors.ink,
   },
-  qrIcon: {
-    width: 48,
-    height: 48,
+  checkinIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qrTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
-  qrSub: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 2 },
-  streakHero: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    alignItems: 'center',
-    paddingVertical: 28,
-  },
-  streakLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.label3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  streakRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  streakValue: {
-    fontSize: 52,
-    fontWeight: '800',
-    color: colors.label,
-    letterSpacing: -1,
-  },
-  streakUnit: { fontSize: 14, color: colors.label2, marginTop: 4 },
-  sectHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  sectTitle: { fontSize: 16, fontWeight: '700', color: colors.label },
-  viewAll: { fontSize: 13, fontWeight: '600', color: colors.accent },
-  emptyText: { color: colors.label3, fontSize: 14 },
-  longestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,159,10,0.14)',
-    borderRadius: radii.card,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,159,10,0.35)',
-  },
-  longestLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.orange,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  longestName: { fontSize: 15, fontWeight: '700', color: colors.label, marginTop: 2 },
-  leaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: radii.card,
-    padding: 12,
-  },
-  rank: { width: 22, fontWeight: '700', color: colors.label3, fontSize: 14 },
+  checkinTitle: { fontFamily: FONT_FAMILY, fontSize: 16, fontWeight: '600', color: colors.onInk },
+  checkinSub: { fontFamily: FONT_FAMILY, fontSize: 13, color: colors.inkMuted },
+  tiles: { flexDirection: 'row', gap: 10 },
+  rankWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rank: { width: 18, textAlign: 'center', fontFamily: FONT_FAMILY, fontSize: 14, fontWeight: '600', color: colors.label2 },
   avatar: { width: 36, height: 36, borderRadius: 18 },
-  avatarPlaceholder: {
-    backgroundColor: colors.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leaderName: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.label },
+  avatarEmpty: { backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
+  initial: { fontFamily: FONT_FAMILY, fontSize: 14, fontWeight: '600' },
   streakChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,159,10,0.16)',
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
     paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface2,
   },
-  streakChipText: { fontWeight: '700', color: colors.orange, fontSize: 13 },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-  },
-  historyText: { fontSize: 14, color: colors.label2 },
+  streakText: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '600' },
 });
-
-export default GymHomeScreen;

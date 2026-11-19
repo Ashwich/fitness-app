@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ExerciseMedia, { MediaAttribution } from './ExerciseMedia';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const PURPLE = colors.accent;
 
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.sep,
     gap: 12,
   },
-  title: { flex: 1, fontSize: 18, fontWeight: '800', color: colors.label, textTransform: 'capitalize' },
+  title: { flex: 1, fontFamily: FONT_FAMILY, fontSize: 18, fontWeight: '800', color: colors.label, textTransform: 'capitalize' },
   closeBtn: {
     width: 36,
     height: 36,
@@ -109,10 +109,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.accent, textTransform: 'capitalize' },
-  prescription: { fontSize: 15, fontWeight: '700', color: PURPLE },
+  chipText: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600', color: colors.accent, textTransform: 'capitalize' },
+  prescription: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '700', color: PURPLE },
   steps: { gap: 10, marginTop: 8 },
-  stepsTitle: { fontSize: 16, fontWeight: '800', color: colors.label, marginBottom: 4 },
+  stepsTitle: { fontFamily: FONT_FAMILY, fontSize: 16, fontWeight: '800', color: colors.label, marginBottom: 4 },
   stepRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   stepNum: {
     width: 24,
@@ -122,10 +122,11 @@ const styles = StyleSheet.create({
     color: colors.label,
     textAlign: 'center',
     lineHeight: 24,
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     fontWeight: '700',
     overflow: 'hidden',
   },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.label2 },
-  noSteps: { fontSize: 14, color: colors.label3 },
+  stepText: { flex: 1, fontFamily: FONT_FAMILY, fontSize: 14, lineHeight: 20, color: colors.label2 },
+  noSteps: { fontFamily: FONT_FAMILY, fontSize: 14, color: colors.label3 },
 });

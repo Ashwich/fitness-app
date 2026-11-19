@@ -1,121 +1,73 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../../components/ScreenContainer';
+import { useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Button, Icon, PageTitle, Screen, Txt } from '../../components/ui';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 import { useAuth } from '../../context/AuthContext';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
 
-const PURPLE = colors.accent;
-
-/** Gym tab placeholder when the member has no linked gym. */
-const GymWaitScreen = () => {
-  const { refreshGymLink } = useAuth();
+/** Gym tab when the member has no linked gym ("Gym — empty state"). */
+export default function GymWaitScreen() {
+  const { refreshGymLink, user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleRetry = async () => {
+  const retry = async () => {
     setLoading(true);
     try {
       const result = await refreshGymLink();
       if (result?.linked) {
-        Alert.alert(
-          'Connected',
-          result?.gym?.name
-            ? `You're linked to ${result.gym.name}.`
-            : 'Your gym account is linked.'
-        );
+        Alert.alert('Connected', result?.gym?.name ? `You're linked to ${result.gym.name}.` : 'Your gym account is linked.');
       } else {
-        Alert.alert(
-          'Not linked yet',
-          'Ask your gym to add your phone number, then retry.'
-        );
+        Alert.alert('Not linked yet', 'Ask your gym to add your phone number as a member, then check again.');
       }
-    } catch (error) {
-      Alert.alert('Could not link', getReadableError(error));
+    } catch (e) {
+      Alert.alert('Could not check', getReadableError(e));
     } finally {
       setLoading(false);
     }
   };
 
+  const explain = () =>
+    Alert.alert(
+      'How linking works',
+      `Gyms using Fitsera add members by phone number. When your gym adds ${
+        user?.phone ? user.phone : 'the phone number on your account'
+      }, your membership appears here automatically. You can then check in by scanning the QR code at the front desk, see your streak, and get diet plans from your trainer.`,
+    );
+
   return (
-    <ScreenContainer>
-      <View style={styles.wrap}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="business-outline" size={36} color={PURPLE} />
+    <Screen contentStyle={{ flexGrow: 1 }}>
+      <PageTitle title="Gym" />
+      <View style={styles.center}>
+        <View style={styles.badge}>
+          <Icon name="gym" size={36} strokeWidth={1.5} />
         </View>
-        <Text style={styles.title}>No gym linked</Text>
-        <Text style={styles.body}>
-          Ask your gym to add your phone number as a member so you can mark
-          attendance and see streaks.
-        </Text>
-        <TouchableOpacity
-          style={[styles.btn, loading && styles.disabled]}
-          onPress={handleRetry}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.onAccent} />
-          ) : (
-            <>
-              <Ionicons name="link" size={18} color={colors.onAccent} />
-              <Text style={styles.btnText}>Retry link</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <View style={{ gap: 8 }}>
+          <Txt style={styles.title}>No gym linked yet</Txt>
+          <Txt style={styles.body}>
+            Ask your gym to add your phone number as a member. Then you can check in with a scan and keep your
+            streak going.
+          </Txt>
+        </View>
+        <View style={styles.actions}>
+          <Button title="Check again" onPress={retry} loading={loading} />
+          <Button title="How linking works" variant="ghost" onPress={explain} />
+        </View>
       </View>
-    </ScreenContainer>
+    </Screen>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 100,
-    alignItems: 'center',
-    gap: 14,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.accentSoft,
+  center: { flex: 1, minHeight: 480, alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 16 },
+  badge: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.label,
-  },
-  body: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.label2,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: PURPLE,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  btnText: { color: colors.onAccent, fontWeight: '700', fontSize: 16 },
-  disabled: { opacity: 0.7 },
+  title: { fontFamily: FONT_FAMILY, fontSize: 22, fontWeight: '600', textAlign: 'center' },
+  body: { fontFamily: FONT_FAMILY, fontSize: 15, lineHeight: 22, color: colors.label2, textAlign: 'center' },
+  actions: { alignSelf: 'stretch', gap: 10, marginTop: 8 },
 });
-
-export default GymWaitScreen;

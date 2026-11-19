@@ -6,10 +6,10 @@ export default {
   expo: {
     name: 'Fitsera',
     slug: 'fitsera-app',
-    version: '1.1.0',
+    version: '1.2.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
-    userInterfaceStyle: 'dark',
+    userInterfaceStyle: 'light',
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
@@ -63,7 +63,33 @@ export default {
         },
       ],
       'expo-secure-store',
-      'expo-font',
+      [
+        'expo-font',
+        {
+          // Inter Tight, embedded natively so fontFamily 'Inter Tight' + fontWeight works on both platforms
+          ios: {
+            fonts: [
+              './assets/fonts/InterTight_400Regular.ttf',
+              './assets/fonts/InterTight_500Medium.ttf',
+              './assets/fonts/InterTight_600SemiBold.ttf',
+              './assets/fonts/InterTight_700Bold.ttf',
+            ],
+          },
+          android: {
+            fonts: [
+              {
+                fontFamily: 'Inter Tight',
+                fontDefinitions: [
+                  { path: './assets/fonts/InterTight_400Regular.ttf', weight: 400 },
+                  { path: './assets/fonts/InterTight_500Medium.ttf', weight: 500 },
+                  { path: './assets/fonts/InterTight_600SemiBold.ttf', weight: 600 },
+                  { path: './assets/fonts/InterTight_700Bold.ttf', weight: 700 },
+                ],
+              },
+            ],
+          },
+        },
+      ],
       '@react-native-community/datetimepicker',
       'expo-sharing',
       'expo-status-bar',

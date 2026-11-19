@@ -12,7 +12,7 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { normalizePhoneToE164 } from '../../services/firebaseAuthService';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const GREEN = colors.accent;
 
@@ -123,12 +123,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   title: {
+    fontFamily: FONT_FAMILY,
     fontSize: 24,
     fontWeight: '800',
     color: colors.label,
     textAlign: 'center',
   },
   body: {
+    fontFamily: FONT_FAMILY,
     fontSize: 15,
     lineHeight: 22,
     color: colors.label2,
@@ -144,6 +146,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   label: {
+    fontFamily: FONT_FAMILY,
     fontSize: 12,
     fontWeight: '700',
     color: colors.accent,
@@ -157,6 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 14,
+    fontFamily: FONT_FAMILY,
     fontSize: 16,
     color: colors.label,
   },
@@ -169,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontFamily: FONT_FAMILY, fontSize: 15 },
   skipBtn: {
     paddingVertical: 14,
     alignItems: 'center',
@@ -177,6 +181,7 @@ const styles = StyleSheet.create({
   skipText: {
     color: colors.label2,
     fontWeight: '600',
+    fontFamily: FONT_FAMILY,
     fontSize: 15,
   },
   disabled: { opacity: 0.7 },
@@ -190,5 +195,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.redSoft,
   },
-  errorText: { flex: 1, fontSize: 13, color: colors.red },
+  errorText: { flex: 1, fontFamily: FONT_FAMILY, fontSize: 13, color: colors.red },
 });

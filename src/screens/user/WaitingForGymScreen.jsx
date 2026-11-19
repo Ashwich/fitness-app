@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { getReadableError } from '../../utils/apiError';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 
 const PURPLE = colors.accent;
 
@@ -108,12 +108,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: {
+    fontFamily: FONT_FAMILY,
     fontSize: 24,
     fontWeight: '800',
     color: colors.label,
     textAlign: 'center',
   },
   body: {
+    fontFamily: FONT_FAMILY,
     fontSize: 15,
     lineHeight: 22,
     color: colors.label2,
@@ -131,11 +133,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     width: '100%',
   },
-  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 16 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontFamily: FONT_FAMILY, fontSize: 16 },
   secondaryBtn: {
     paddingVertical: 12,
   },
-  secondaryText: { color: PURPLE, fontWeight: '600', fontSize: 15 },
+  secondaryText: { color: PURPLE, fontWeight: '600', fontFamily: FONT_FAMILY, fontSize: 15 },
   logoutBtn: { marginTop: 24 },
   logoutText: { color: colors.label3, fontWeight: '500' },
   disabled: { opacity: 0.7 },

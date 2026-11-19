@@ -19,7 +19,7 @@ import {
   dayInCycle,
   isPeriodDay,
 } from '../../services/periodTrackingService';
-import { colors } from '../../theme/opengym';
+import { colors, FONT_FAMILY } from '../../theme/opengym';
 import { toLocalISODate } from '../../utils/date';
 
 const PURPLE = colors.purple;
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '800', color: colors.label },
+  title: { fontFamily: FONT_FAMILY, fontSize: 18, fontWeight: '800', color: colors.label },
   body: { padding: 16, gap: 12, paddingBottom: 40 },
   center: { flex: 1 },
   card: {
@@ -199,8 +199,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.label },
-  cardSub: { fontSize: 12, color: colors.label2, marginTop: 2 },
+  cardTitle: { fontFamily: FONT_FAMILY, fontSize: 16, fontWeight: '700', color: colors.label },
+  cardSub: { fontFamily: FONT_FAMILY, fontSize: 12, color: colors.label2, marginTop: 2 },
   statusCard: {
     backgroundColor: colors.purpleSoft,
     borderRadius: 16,
@@ -210,16 +210,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusPeriod: { backgroundColor: colors.pinkSoft, borderColor: colors.pinkSoft },
-  statusLabel: { fontSize: 12, fontWeight: '700', color: colors.label3, textTransform: 'uppercase' },
-  statusValue: { fontSize: 28, fontWeight: '800', color: colors.label, marginTop: 6 },
-  statusNext: { fontSize: 13, color: ROSE, marginTop: 8, fontWeight: '600' },
-  label: { fontSize: 12, fontWeight: '700', color: colors.label2, textTransform: 'uppercase' },
+  statusLabel: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '700', color: colors.label3, textTransform: 'uppercase' },
+  statusValue: { fontFamily: FONT_FAMILY, fontSize: 28, fontWeight: '800', color: colors.label, marginTop: 6 },
+  statusNext: { fontFamily: FONT_FAMILY, fontSize: 13, color: ROSE, marginTop: 8, fontWeight: '600' },
+  label: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '700', color: colors.label2, textTransform: 'uppercase' },
   input: {
     borderWidth: 1,
     borderColor: colors.pinkSoft,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
+    fontFamily: FONT_FAMILY,
     fontSize: 15,
     color: colors.label,
     backgroundColor: colors.surface2,
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  primaryText: { color: colors.label, fontWeight: '800', fontSize: 15 },
+  primaryText: { color: colors.label, fontWeight: '800', fontFamily: FONT_FAMILY, fontSize: 15 },
   secondaryBtn: {
     borderWidth: 1,
     borderColor: colors.pinkSoft,

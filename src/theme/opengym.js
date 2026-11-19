@@ -1,97 +1,96 @@
 /**
- * openGym-inspired design tokens (dark, iOS fitness aesthetic).
- * Accent default: lime green — not purple.
+ * Fitsera design tokens — "Fitness App Redesign" (light, warm neutral, lime accent).
+ *
+ * Token names are kept from the previous dark theme so every screen picks the
+ * new look up automatically:
+ *   accent    = the primary action colour (ink #111 buttons with white text)
+ *   lime      = highlight chips / badges / today markers (with ink text)
  */
+export const FONT_FAMILY = 'Inter Tight';
+
 export const colors = {
-  bg: '#000000',
-  bgEl: '#0e0e10',
-  surface: '#1c1c1e',
-  surface2: '#2c2c2e',
-  surface3: '#3a3a3c',
-  label: '#ffffff',
-  label2: 'rgba(235,235,245,0.60)',
-  label3: 'rgba(235,235,245,0.32)',
-  label4: 'rgba(235,235,245,0.18)',
-  sep: 'rgba(84,84,88,0.60)',
-  accent: '#30d158',
-  accentPressed: '#248a3d',
-  onAccent: '#000000',
-  accentSoft: 'rgba(48,209,88,0.16)',
-  accentLine: 'rgba(48,209,88,0.38)',
-  orange: '#ff9f0a',
-  red: '#ff453a',
-  blue: '#0a84ff',
-  grey: '#8e8e93',
-  purple: '#bf5af2',
-  pink: '#ff375f',
-  teal: '#64d2ff',
-  redSoft: 'rgba(255,69,58,0.16)',
-  orangeSoft: 'rgba(255,159,10,0.16)',
-  blueSoft: 'rgba(10,132,255,0.16)',
-  purpleSoft: 'rgba(191,90,242,0.16)',
-  pinkSoft: 'rgba(255,55,95,0.16)',
-  overlay: 'rgba(0,0,0,0.72)',
+  // Ground and surfaces
+  bg: '#F4F4F1',
+  bgEl: '#FFFFFF',
+  surface: '#FFFFFF',
+  surface2: '#F4F4F1', // inset tiles / stepper buttons inside white cards
+  surface3: '#ECECE7', // progress tracks, empty bars
+  bar: '#DADAD3', // past-day bars in charts
+  ring: '#CFCFC8', // unselected radio ring, dashed borders, off switches
+
+  // Text
+  label: '#111111',
+  label2: '#6B6B66',
+  label3: '#8A8A84',
+  label4: '#A3A39C',
+  sep: '#ECECE7',
+  border: '#E4E4DF',
+
+  // Actions
+  ink: '#111111',
+  onInk: '#FFFFFF',
+  inkMuted: '#B8B8B2', // secondary text on ink surfaces
+  inkTrack: '#333330', // progress track on ink surfaces
+  accent: '#111111',
+  accentPressed: '#333330',
+  onAccent: '#FFFFFF',
+  accentSoft: '#D4F25A',
+  accentLine: '#CFCFC8',
+  lime: '#D4F25A',
+  onLime: '#111111',
+  limeDeep: '#2A2F12',
+
+  // Status / semantic (darkened for contrast on light ground)
+  orange: '#B54708',
+  red: '#B42318',
+  blue: '#175CD3',
+  grey: '#8A8A84',
+  purple: '#6E3FC4',
+  pink: '#C11574',
+  teal: '#0E7090',
+  redSoft: '#FDECEA',
+  orangeSoft: '#FEF0E1',
+  blueSoft: '#E8F0FD',
+  purpleSoft: '#F1ECFB',
+  pinkSoft: '#FCE8F3',
+  overlay: 'rgba(17,17,17,0.45)',
 };
 
 export const radii = {
   sm: 8,
   md: 12,
-  card: 14,
+  card: 20,
   lg: 16,
-  xl: 22,
+  tile: 18,
+  xl: 24,
   pill: 999,
 };
 
 export const space = {
-  pad: 16,
-  cardGap: 12,
-  section: 22,
+  pad: 20,
+  cardGap: 10,
+  section: 20,
 };
 
+const t = (fontSize, fontWeight, color, extra = {}) => ({
+  fontFamily: FONT_FAMILY,
+  fontSize,
+  fontWeight,
+  color,
+  ...extra,
+});
+
 export const typography = {
-  largeTitle: {
-    fontSize: 34,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    color: colors.label,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    color: colors.label,
-  },
-  title2: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    color: colors.label,
-  },
-  headline: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    color: colors.label,
-  },
-  body: {
-    fontSize: 17,
-    fontWeight: '400',
-    letterSpacing: -0.2,
-    color: colors.label,
-  },
-  sub: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: colors.label2,
-  },
-  foot: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: colors.label3,
-  },
-  cap: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: colors.label3,
-  },
+  display: t(64, '600', colors.label, { letterSpacing: -2.5, lineHeight: 64 }),
+  largeTitle: t(32, '600', colors.label, { letterSpacing: -0.6 }),
+  title: t(28, '600', colors.label, { letterSpacing: -0.5 }),
+  title2: t(22, '600', colors.label),
+  headline: t(17, '600', colors.label),
+  body: t(16, '400', colors.label),
+  row: t(15, '600', colors.label),
+  sub: t(15, '400', colors.label2),
+  meta: t(13, '400', colors.label2),
+  section: t(13, '600', colors.label2),
+  foot: t(13, '400', colors.label3),
+  cap: t(12, '400', colors.label2),
 };
