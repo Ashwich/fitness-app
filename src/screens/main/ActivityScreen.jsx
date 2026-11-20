@@ -167,7 +167,7 @@ export default function ActivityScreen({ navigation }) {
 const styles = StyleSheet.create({
   hero: { gap: 6, paddingHorizontal: 4, paddingTop: 8 },
   caption: { fontSize: 14, color: colors.label2 },
-  display: { fontSize: 64, fontWeight: '600', letterSpacing: -2.5, lineHeight: 66 },
+  display: { fontSize: 64, fontWeight: '600', letterSpacing: -2.5, lineHeight: 70, includeFontPadding: false },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontSize: 16, fontWeight: '600' },

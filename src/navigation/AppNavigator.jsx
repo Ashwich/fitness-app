@@ -132,6 +132,7 @@ const AuthenticatedNavigator = () => {
       <RootStack.Screen name="DietPlans" component={DietPlansScreen} />
       <RootStack.Screen name="AttendanceScreen" component={AttendanceScreen} />
       <RootStack.Screen name="PeriodTrackingScreen" component={PeriodTrackingScreen} />
+      <RootStack.Screen name="PhoneNumber" component={LinkPhoneScreen} initialParams={{ fromSettings: true }} />
     </RootStack.Navigator>
   );
 };

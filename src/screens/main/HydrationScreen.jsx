@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   undoText: { fontSize: 14, fontWeight: '600' },
   hero: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   caption: { fontSize: 14, color: colors.label2 },
-  display: { fontSize: 64, fontWeight: '600', letterSpacing: -2.5, lineHeight: 66 },
+  display: { fontSize: 64, fontWeight: '600', letterSpacing: -2.5, lineHeight: 70, includeFontPadding: false },
   displayUnit: { fontSize: 22, fontWeight: '500', color: colors.label2, letterSpacing: 0 },
   tube: { width: 96, height: TUBE_H, borderRadius: 48, backgroundColor: colors.surface3, overflow: 'hidden', justifyContent: 'flex-end' },
   tubeFill: { backgroundColor: colors.ink },

@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   sliderCard: { gap: 6 },
   sliderHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   sliderLabel: { fontSize: 15, fontWeight: '600' },
-  sliderValue: { fontSize: 32, fontWeight: '600', letterSpacing: -0.64 },
+  sliderValue: { fontSize: 32, lineHeight: 38, fontWeight: '600', letterSpacing: -0.64 },
   sliderUnit: { fontSize: 15, fontWeight: '500', color: colors.label2, letterSpacing: 0 },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
   endLabel: { fontSize: 12, color: colors.label2 },
@@ -265,12 +265,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   bmiCaption: { fontSize: 13, color: colors.inkMuted },
-  bmiValue: { fontSize: 40, fontWeight: '600', letterSpacing: -1.2, color: colors.onInk },
+  bmiValue: { fontSize: 40, lineHeight: 46, fontWeight: '600', letterSpacing: -1.2, color: colors.onInk },
 
   sessionBlock: { gap: 12, paddingTop: 14, paddingBottom: 16 },
   sessionTitle: { fontSize: 15, fontWeight: '600' },
 
-  kcal: { fontSize: 44, fontWeight: '600', letterSpacing: -1.3, color: colors.onInk },
+  kcal: { fontSize: 44, lineHeight: 50, fontWeight: '600', letterSpacing: -1.3, color: colors.onInk },
   kcalUnit: { fontSize: 16, fontWeight: '500', color: colors.inkMuted, letterSpacing: 0 },
   macroRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.inkTrack, paddingTop: 14 },
   macro: { flex: 1, gap: 2 },

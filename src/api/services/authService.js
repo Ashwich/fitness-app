@@ -182,8 +182,12 @@ export const devPhoneAuth = async (phone) => {
 };
 
 /** After Google/email auth: attach phone for gym roster sync */
-export const linkPhone = async (phone) => {
-  const response = await apiClient.post('/me/phone', { phone });
+/**
+ * Add a phone to the signed-in account. `idToken` proves ownership (Firebase
+ * phone OTP). `merge: true` folds an existing account with that number into this one.
+ */
+export const linkPhone = async (phone, { idToken, merge } = {}) => {
+  const response = await apiClient.post('/me/phone', { phone, idToken, merge: merge === true });
   return extractData(response);
 };
 

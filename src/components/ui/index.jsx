@@ -477,9 +477,9 @@ const s = StyleSheet.create({
   pageTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 },
   pageTitleText: { gap: 2, flexShrink: 1 },
   eyebrow: { fontSize: 14, color: colors.label2 },
-  h1: { fontSize: 28, fontWeight: '600', letterSpacing: -0.56 },
+  h1: { fontSize: 28, lineHeight: 34, fontWeight: '600', letterSpacing: -0.56 },
   heading: { gap: 6, paddingHorizontal: 4 },
-  h1Large: { fontSize: 32, fontWeight: '600', letterSpacing: -0.64 },
+  h1Large: { fontSize: 32, lineHeight: 38, fontWeight: '600', letterSpacing: -0.64 },
   headingSub: { fontSize: 15, lineHeight: 22, color: colors.label2 },
 
   topBar: {

@@ -8,7 +8,7 @@ export const getReadableError = (error, fallback = 'Something went wrong') => {
     }
     
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      return 'Network error: Cannot connect to server. Please check:\n• Backend is running on port 8081\n• Using correct IP address (not localhost on physical devices)\n• Device and server are on the same network';
+      return "Can't reach Fitsera. Check your internet connection and try again.";
     }
 
     // Handle CORS errors

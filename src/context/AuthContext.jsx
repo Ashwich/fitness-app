@@ -230,9 +230,9 @@ export const AuthProvider = ({ children }) => {
   );
 
   const linkPhoneForGym = useCallback(
-    async (phone) => {
+    async (phone, { idToken, merge } = {}) => {
       try {
-        const result = await linkPhoneRequest(phone);
+        const result = await linkPhoneRequest(phone, { idToken, merge });
         setNeedsPhoneLink(false);
         setUser((prev) => (prev ? { ...prev, phone: result?.phone || phone } : prev));
 
@@ -251,14 +251,21 @@ export const AuthProvider = ({ children }) => {
         } catch {
           /* non-fatal */
         }
+        // A merged account may bring a finished profile with it.
+        if (result?.merged) await checkOnboarding();
 
         return { success: true, ...result };
       } catch (error) {
-        console.error('[Auth] linkPhone error:', error);
-        return { success: false, error: getReadableError(error) };
+        const data = error?.response?.data || {};
+        return {
+          success: false,
+          error: getReadableError(error),
+          code: data.code || null,
+          details: data.details || null,
+        };
       }
     },
-    [normalizeUser],
+    [normalizeUser, checkOnboarding],
   );
 
   const skipPhoneLink = useCallback(() => {

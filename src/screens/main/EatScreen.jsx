@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   totals: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   caption: { fontSize: 14, color: colors.label2 },
   caption13: { fontSize: 13, color: colors.label2 },
-  big: { fontSize: 44, fontWeight: '600', letterSpacing: -1.3, lineHeight: 46 },
+  big: { fontSize: 44, fontWeight: '600', letterSpacing: -1.3, lineHeight: 50, includeFontPadding: false },
   left: { fontSize: 22, fontWeight: '600' },
   unit: { fontSize: 14, fontWeight: '500', color: colors.label2 },
   stack: { flexDirection: 'row', gap: 3, height: 10 },

@@ -24,7 +24,7 @@ import { calorieGoalsOf, fmt, goalLabel, primaryGoalOf } from '../../utils/profi
 import { getReadableError } from '../../utils/apiError';
 
 export default function SettingsScreen({ navigation }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const units = useUnits();
   const [profile, setProfile] = useState(null);
   const [steps, setSteps] = useState(null);
@@ -151,6 +151,13 @@ export default function SettingsScreen({ navigation }) {
 
       <Section title="Account">
         <ListCard>
+          <ListRow
+            title="Phone number"
+            subtitle="Syncs your gym membership"
+            value={user?.phone ? user.phone.replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2') : 'Add'}
+            chevron
+            onPress={() => navigation.navigate('PhoneNumber')}
+          />
           <ListRow title="Log out" chevron onPress={logout} />
           <ListRow
             title="Delete account"
