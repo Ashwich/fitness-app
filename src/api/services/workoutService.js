@@ -53,3 +53,9 @@ export const updateWorkout = async (planId, days) => {
   const response = await apiClient.put(`/workouts/${planId}`, { days });
   return extractData(response);
 };
+
+/** Make a built-in program (or a custom one) the active workout plan. */
+export const saveCustomWorkout = async ({ name, days, programId }) => {
+  const response = await apiClient.post('/workouts/custom', { name, days, programId });
+  return extractData(response);
+};

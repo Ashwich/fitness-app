@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getActiveWorkout } from '../../api/services/workoutService';
+import { getActiveWorkout, saveCustomWorkout } from '../../api/services/workoutService';
 import { enrichWorkoutDays, STARTER_PLAN_DAYS } from '../../data/exercises';
 
 const NEXT_DAY_KEY = 'fitsera_next_workout_day';
 const PENDING_STARTER_KEY = 'fitsera_pending_starter_workout';
+const PENDING_NAME_KEY = 'fitsera_pending_starter_name';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -19,17 +20,40 @@ export async function loadPlan() {
     /* fall through to starter */
   }
   let starter = STARTER_PLAN_DAYS;
+  let name = 'Push · Pull · Legs';
   try {
     const pending = await AsyncStorage.getItem(PENDING_STARTER_KEY);
     if (pending) starter = JSON.parse(pending);
+    name = (await AsyncStorage.getItem(PENDING_NAME_KEY)) || name;
   } catch {
     /* ignore */
   }
   return {
-    plan: { id: null, name: 'Push · Pull · Legs', source: 'STARTER' },
+    plan: { id: null, name, source: 'STARTER' },
     days: enrichWorkoutDays(clone(starter)),
     source: 'STARTER',
   };
+}
+
+/**
+ * Make a program the active plan. Saved to the account; if the server can't be
+ * reached it is kept on the phone so the Train tab still shows it.
+ */
+export async function applyProgram({ id, name, days }) {
+  const payload = { name, days, programId: id };
+  let saved = true;
+  try {
+    await saveCustomWorkout(payload);
+    await AsyncStorage.multiRemove([PENDING_STARTER_KEY, PENDING_NAME_KEY]);
+  } catch {
+    saved = false;
+    await AsyncStorage.multiSet([
+      [PENDING_STARTER_KEY, JSON.stringify(days)],
+      [PENDING_NAME_KEY, name],
+    ]).catch(() => {});
+  }
+  await AsyncStorage.setItem(NEXT_DAY_KEY, '0').catch(() => {});
+  return saved;
 }
 
 export async function getNextDayIndex(count) {

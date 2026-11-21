@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     backgroundColor: colors.surface,
   },
-  ringCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 24 },
+  ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 24 },
   ringValue: { fontSize: 40, lineHeight: 44, fontWeight: '600', letterSpacing: -1.2, includeFontPadding: false, textAlign: 'center' },
   ringSub: { fontSize: 14, lineHeight: 18, color: colors.label2, includeFontPadding: false, textAlign: 'center' },
   triple: { alignSelf: 'stretch', flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.sep, paddingTop: 18 },

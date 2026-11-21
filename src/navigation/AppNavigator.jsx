@@ -29,6 +29,8 @@ import DietPlansScreen from '../screens/user/DietPlansScreen';
 import CalorieGoalsScreen from '../screens/user/CalorieGoalsScreen';
 import AttendanceScreen from '../screens/user/AttendanceScreen';
 import PeriodTrackingScreen from '../screens/user/PeriodTrackingScreen';
+import CustomDietScreen from '../screens/user/CustomDietScreen';
+import ProgramsScreen from '../screens/main/ProgramsScreen';
 
 const navTheme = {
   ...DefaultTheme,
@@ -130,6 +132,8 @@ const AuthenticatedNavigator = () => {
       <RootStack.Screen name="CalorieGoalsScreen" component={CalorieGoalsScreen} />
       <RootStack.Screen name="NutritionDiaryScreen" component={NutritionDiaryScreen} />
       <RootStack.Screen name="DietPlans" component={DietPlansScreen} />
+      <RootStack.Screen name="CustomDiet" component={CustomDietScreen} />
+      <RootStack.Screen name="Programs" component={ProgramsScreen} />
       <RootStack.Screen name="AttendanceScreen" component={AttendanceScreen} />
       <RootStack.Screen name="PeriodTrackingScreen" component={PeriodTrackingScreen} />
       <RootStack.Screen name="PhoneNumber" component={LinkPhoneScreen} initialParams={{ fromSettings: true }} />

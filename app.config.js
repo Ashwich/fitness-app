@@ -6,7 +6,7 @@ export default {
   expo: {
     name: 'Fitsera',
     slug: 'fitsera-app',
-    version: '1.2.1',
+    version: '1.3.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -39,7 +39,7 @@ export default {
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#F3EFE6',
+        backgroundColor: '#FFFFFF',
       },
     },
     web: {
@@ -59,7 +59,7 @@ export default {
         {
           // Plain cream launch screen; the animated logo intro plays right after
           // on the same background (see src/components/IntroSplash.jsx).
-          backgroundColor: '#F3EFE6',
+          backgroundColor: '#FFFFFF',
           // Transparent image: Android needs a splash drawable to link resources,
           // but the screen should stay plain cream until the logo animation plays.
           image: './assets/splash-blank.png',

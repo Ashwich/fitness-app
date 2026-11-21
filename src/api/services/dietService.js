@@ -25,3 +25,9 @@ export const completeOnboarding = async (payload) => {
   const response = await apiClient.post('/onboarding/complete', payload);
   return extractData(response);
 };
+
+/** Save a suggested or self-built plan as the member's active diet. */
+export const saveCustomDiet = async ({ title, description, meals }) => {
+  const response = await apiClient.post('/diets/custom', { title, description, meals });
+  return extractData(response);
+};

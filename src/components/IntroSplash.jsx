@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 // Must match the native launch screen colour in app.config.js so the
 // hand-off from the OS splash to this animation is seamless.
-export const INTRO_BG = '#F3EFE6';
+export const INTRO_BG = '#FFFFFF';
 
 // Keep the native splash up until the Lottie view has mounted.
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -62,7 +62,7 @@ export const IntroSplash = ({ onFinish }) => {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: INTRO_BG,
     alignItems: 'center',
     justifyContent: 'center',

@@ -17,6 +17,7 @@ import {
 import ExerciseDetailModal from '../../components/workout/ExerciseDetailModal';
 import { colors, FONT_FAMILY, radii } from '../../theme/opengym';
 import { EXDB, enrichWorkoutDays } from '../../data/exercises';
+import { repsText } from '../../components/setup/PlanChoices';
 import { updateWorkout } from '../../api/services/workoutService';
 import { markDayActive, todayISO } from '../../services/activityCalendarService';
 import { getReadableError } from '../../utils/apiError';
@@ -33,7 +34,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 const exMeta = (ex) => [cap(ex.target || ex.bodyPart), cap(ex.equipment)].filter(Boolean).join(' · ');
 const exName = (ex) => cap(ex.catalogName || ex.name || 'Exercise');
 
-export default function TrainScreen() {
+export default function TrainScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState(null);
   const [days, setDays] = useState([]);
@@ -110,6 +111,7 @@ export default function TrainScreen() {
         name: e.catalogName || e.name,
         sets: Number(e.sets) || 3,
         reps: Number(e.reps) || 10,
+        ...(e.unit ? { unit: e.unit } : {}),
       })),
     }));
     try {
@@ -191,6 +193,25 @@ export default function TrainScreen() {
           }
         />
 
+        {!editing && !session ? (
+          <Pressable
+            onPress={() => navigation.navigate('Programs', { trainerPlan: plan?.source === 'TRAINER' })}
+            accessibilityRole="button"
+            accessibilityLabel="Change program"
+            style={({ pressed }) => [styles.program, pressed && { opacity: 0.7 }]}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt style={styles.programLabel}>Program</Txt>
+              <Txt style={styles.programName} numberOfLines={1}>
+                {plan?.name || 'Your plan'}
+              </Txt>
+            </View>
+            <View style={styles.changePill}>
+              <Txt style={styles.changeText}>Change</Txt>
+            </View>
+          </Pressable>
+        ) : null}
+
         {tabs.length > 1 ? (
           <Segmented
             options={tabs}
@@ -249,7 +270,7 @@ export default function TrainScreen() {
                   <Txt style={styles.setsReps}>
                     {ex.sets}
                     <Txt style={styles.times}> × </Txt>
-                    {ex.reps}
+                    {repsText(ex)}
                   </Txt>
                 )}
               </View>
@@ -376,6 +397,19 @@ const styles = StyleSheet.create({
   mini: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface2, borderRadius: 10 },
   miniBtn: { width: 26, height: 30, alignItems: 'center', justifyContent: 'center' },
   miniVal: { minWidth: 20, textAlign: 'center', fontSize: 14, fontWeight: '600' },
+  program: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  programLabel: { fontSize: 12, color: colors.label2 },
+  programName: { fontSize: 15, fontWeight: '600' },
+  changePill: { height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: colors.lime, justifyContent: 'center' },
+  changeText: { fontSize: 13, fontWeight: '600', color: colors.onLime },
   cta: { position: 'absolute', left: 20, right: 20, bottom: 16 },
   modalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingBottom: 12 },
   search: {
